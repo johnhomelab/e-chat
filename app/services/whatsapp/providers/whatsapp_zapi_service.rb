@@ -7,8 +7,8 @@ class Whatsapp::Providers::WhatsappZapiService < Whatsapp::Providers::BaseServic
 
   def sync_templates; end
 
-  def send_message(phone_number, message)
-    phone = phone_number.delete('+')
+  def send_message(phone, message)
+    phone = phone.delete('+')
     params = message.content_attributes[:zapi_args].presence || {}
 
     params[:messageId] = message.in_reply_to_external_id if message.in_reply_to_external_id.present?

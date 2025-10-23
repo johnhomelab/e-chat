@@ -51,6 +51,7 @@ export default {
       zapiInstanceId: '',
       zapiToken: '',
       zapiClientToken: '',
+      zapiInstanceIdUpdate: '',
       zapiTokenUpdate: '',
       zapiClientTokenUpdate: '',
     };
@@ -63,6 +64,7 @@ export default {
         ),
       },
       baileysProviderUrl: { isValidURL: value => !value || isValidURL(value) },
+      zapiInstanceIdUpdate: {},
       zapiTokenUpdate: {},
       zapiClientTokenUpdate: {},
     };
@@ -212,6 +214,24 @@ export default {
     },
     onCloseLinkDeviceModal() {
       this.showLinkDeviceModal = false;
+    },
+    async updateZapiInstanceId() {
+      try {
+        const payload = {
+          id: this.inbox.id,
+          formData: false,
+          channel: {
+            provider_config: {
+              ...this.inbox.provider_config,
+              instance_id: this.zapiInstanceIdUpdate,
+            },
+          },
+        };
+        await this.$store.dispatch('inboxes/updateInbox', payload);
+        useAlert(this.$t('INBOX_MGMT.EDIT.API.SUCCESS_MESSAGE'));
+      } catch (error) {
+        useAlert(this.$t('INBOX_MGMT.EDIT.API.ERROR_MESSAGE'));
+      }
     },
     async updateZapiToken() {
       try {
@@ -676,14 +696,46 @@ export default {
           </NextButton>
         </div>
       </SettingsSection>
+
+      <template v-if="inbox.provider_config.instance_id">
+        <SettingsSection
+          :title="$t('INBOX_MGMT.SETTINGS_POPUP.WHATSAPP_INSTANCE_ID_TITLE')"
+          :sub-title="
+            $t('INBOX_MGMT.SETTINGS_POPUP.WHATSAPP_INSTANCE_ID_SUBHEADER')
+          "
+        >
+          <woot-code :script="inbox.provider_config.instance_id" />
+        </SettingsSection>
+      </template>
       <SettingsSection
-        :title="$t('INBOX_MGMT.SETTINGS_POPUP.WHATSAPP_INSTANCE_ID_TITLE')"
+        :title="
+          $t('INBOX_MGMT.SETTINGS_POPUP.WHATSAPP_INSTANCE_ID_UPDATE_TITLE')
+        "
         :sub-title="
-          $t('INBOX_MGMT.SETTINGS_POPUP.WHATSAPP_INSTANCE_ID_SUBHEADER')
+          $t('INBOX_MGMT.SETTINGS_POPUP.WHATSAPP_INSTANCE_ID_UPDATE_SUBHEADER')
         "
       >
-        <woot-code :script="inbox.provider_config.instance_id" />
+        <div
+          class="flex items-center justify-between flex-1 mt-2 whatsapp-settings--content"
+        >
+          <woot-input
+            v-model="zapiInstanceIdUpdate"
+            type="text"
+            class="flex-1 mr-2"
+          />
+          <NextButton
+            :disabled="
+              v$.zapiInstanceIdUpdate.$invalid ||
+              (!inbox.provider_config.instance_id && !zapiInstanceIdUpdate) ||
+              zapiInstanceIdUpdate === inbox.provider_config.instance_id
+            "
+            @click="updateZapiInstanceId"
+          >
+            {{ $t('INBOX_MGMT.SETTINGS_POPUP.WHATSAPP_SECTION_UPDATE_BUTTON') }}
+          </NextButton>
+        </div>
       </SettingsSection>
+
       <template v-if="inbox.provider_config.token">
         <SettingsSection
           :title="$t('INBOX_MGMT.SETTINGS_POPUP.WHATSAPP_TOKEN_TITLE')"

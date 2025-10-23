@@ -64,24 +64,34 @@ module Whatsapp::ZapiHandlers::ReceivedCallback # rubocop:disable Metrics/Module
   end
 
   def contact_name
-    @raw_message[:chatName] || @raw_message[:senderName] || @raw_message[:phone]
+    @raw_message[:senderName] || @raw_message[:chatName] || @raw_message[:phone]
   end
 
   def set_contact
     push_name = contact_name
-    source_id = @raw_message[:phone]
+
+    contact_attributes = { name: push_name, identifier: @raw_message[:chatLid] }
+    contact_attributes[:phone_number] = "+#{@raw_message[:phone]}" unless @raw_message[:phone].ends_with?('@lid')
 
     contact_inbox = ::ContactInboxWithContactBuilder.new(
-      source_id: source_id,
+      source_id: @raw_message[:chatLid].to_s.gsub(/[^\d]/, ''),
       inbox: inbox,
-      contact_attributes: { name: push_name, phone_number: "+#{source_id}" }
+      contact_attributes: contact_attributes
     ).perform
 
     @contact_inbox = contact_inbox
     @contact = contact_inbox.contact
 
-    @contact.update!(name: push_name) if @contact.name == source_id
+    @contact.update!(name: push_name) if @contact.name == @raw_message[:phone]
+    update_contact_phone_number
     try_update_contact_avatar
+  end
+
+  def update_contact_phone_number
+    return if @contact.phone_number.present?
+    return if @raw_message[:phone].ends_with?('@lid')
+
+    @contact.update!(phone_number: "+#{@raw_message[:phone]}")
   end
 
   def try_update_contact_avatar

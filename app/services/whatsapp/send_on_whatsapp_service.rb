@@ -32,7 +32,7 @@ class Whatsapp::SendOnWhatsappService < Base::SendOnChannelService
       return
     end
 
-    message_id = channel.send_template(message.conversation.contact_inbox.source_id, {
+    message_id = channel.send_template(recipient_id, {
                                          name: name,
                                          namespace: namespace,
                                          lang_code: lang_code,
@@ -46,8 +46,19 @@ class Whatsapp::SendOnWhatsappService < Base::SendOnChannelService
   end
 
   def send_session_message
-    message_id = channel.send_message(message.conversation.contact_inbox.source_id, message)
+    message_id = channel.send_message(recipient_id, message)
     message.update!(source_id: message_id) if message_id.present?
+  end
+
+  def recipient_id
+    return message.conversation.contact_inbox.source_id unless channel.provider == 'zapi'
+
+    if message.conversation.contact.phone_number.present?
+      message.conversation.contact.phone_number.gsub(/[^\d]/, '')
+    else
+      # NOTE: `identifier` is the WhatsApp LID format. See `Whatsapp::ZapiHandlers::ReceivedCallback#set_contact`
+      message.conversation.contact.identifier
+    end
   end
 
   def template_params

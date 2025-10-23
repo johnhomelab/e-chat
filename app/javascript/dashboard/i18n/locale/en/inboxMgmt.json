@@ -790,6 +790,8 @@
       "WHATSAPP_MARK_AS_READ_LABEL": "Send read receipts",
       "WHATSAPP_INSTANCE_ID_TITLE": "Instance ID",
       "WHATSAPP_INSTANCE_ID_SUBHEADER": "Your Z-API Instance ID.",
+      "WHATSAPP_INSTANCE_ID_UPDATE_TITLE": "Update Instance ID",
+      "WHATSAPP_INSTANCE_ID_UPDATE_SUBHEADER": "Enter the new Instance ID here",
       "WHATSAPP_TOKEN_TITLE": "Token",
       "WHATSAPP_TOKEN_SUBHEADER": "Your Z-API instance Token.",
       "WHATSAPP_TOKEN_UPDATE_TITLE": "Update Token",

@@ -813,6 +813,53 @@ describe Whatsapp::IncomingMessageBaileysService do
           expect(contact.reload.identifier).to eq('existing@lid')
         end
       end
+
+      context 'when updating contact information' do
+        it 'updates contact phone number if blank' do
+          contact = create(:contact, account: inbox.account, phone_number: nil, identifier: '12345678@lid')
+          create(:contact_inbox, inbox: inbox, contact: contact, source_id: '5511912345678')
+
+          described_class.new(inbox: inbox, params: params).perform
+
+          expect(contact.reload.phone_number).to eq('+5511912345678')
+        end
+
+        it 'does not update contact phone number if already present' do
+          contact = create(:contact, account: inbox.account, phone_number: '+9999999999', identifier: '12345678@lid')
+          create(:contact_inbox, inbox: inbox, contact: contact, source_id: '5511912345678')
+
+          described_class.new(inbox: inbox, params: params).perform
+
+          expect(contact.reload.phone_number).to eq('+9999999999')
+        end
+
+        it 'updates contact name if it matches phone number' do
+          contact = create(:contact, account: inbox.account, name: '5511912345678', phone_number: '+5511912345678', identifier: '12345678@lid')
+          create(:contact_inbox, inbox: inbox, contact: contact, source_id: '5511912345678')
+
+          described_class.new(inbox: inbox, params: params).perform
+
+          expect(contact.reload.name).to eq('John Doe')
+        end
+
+        it 'updates contact name if it matches sender LID' do
+          contact = create(:contact, account: inbox.account, name: '12345678@lid', phone_number: '+5511912345678', identifier: '12345678@lid')
+          create(:contact_inbox, inbox: inbox, contact: contact, source_id: '5511912345678')
+
+          described_class.new(inbox: inbox, params: params).perform
+
+          expect(contact.reload.name).to eq('John Doe')
+        end
+
+        it 'does not update contact name if it is different from phone number and sender LID' do
+          contact = create(:contact, account: inbox.account, name: 'Existing Name', phone_number: '+5511912345678', identifier: '12345678@lid')
+          create(:contact_inbox, inbox: inbox, contact: contact, source_id: '5511912345678')
+
+          described_class.new(inbox: inbox, params: params).perform
+
+          expect(contact.reload.name).to eq('Existing Name')
+        end
+      end
     end
 
     context 'when processing messages.update event' do

@@ -124,9 +124,9 @@ const handleManualLinkClick = () => {
         class="mt-6 relative overflow-visible"
       >
         <img
-          src="~dashboard/assets/images/curved-arrow-red.svg"
+          src="~dashboard/assets/images/curved-arrow.svg"
           alt=""
-          class="absolute -top-12 right-4 w-20 h-20 pointer-events-none z-10"
+          class="absolute -top-12 right-0 w-20 h-20 pointer-events-none z-10 scale-y-[-1] -rotate-45"
         />
         <PromoBanner
           :title="

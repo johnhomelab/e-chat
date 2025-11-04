@@ -722,7 +722,7 @@ describe Whatsapp::IncomingMessageBaileysService do
       end
 
       context 'when processing multiple messages' do
-        it 'creates separate contacts and conversations for each message' do # rubocop:disable RSpec/ExampleLength
+        it 'creates separate contacts and conversations for each message' do
           raw_message1 = {
             key: { id: 'msg_123', remoteJid: '5511912345678@s.whatsapp.net', fromMe: false },
             pushName: 'John Doe',

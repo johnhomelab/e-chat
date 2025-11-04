@@ -10,13 +10,10 @@ import ChannelSelector from 'dashboard/components/ChannelSelector.vue';
 import BaileysWhatsapp from './BaileysWhatsapp.vue';
 import ZapiWhatsapp from './ZapiWhatsapp.vue';
 import PromoBanner from 'dashboard/components-next/banner/PromoBanner.vue';
-import { usePolicy } from 'dashboard/composables/usePolicy';
-import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
-const { isFeatureFlagEnabled } = usePolicy();
 
 const PROVIDER_TYPES = {
   WHATSAPP: 'whatsapp',
@@ -62,16 +59,13 @@ const availableProviders = computed(() => {
       description: t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.BAILEYS_DESC'),
       icon: 'i-woot-baileys',
     },
-  ];
-
-  if (isFeatureFlagEnabled(FEATURE_FLAGS.CHANNEL_ZAPI)) {
-    providers.push({
+    {
       key: PROVIDER_TYPES.ZAPI,
       title: t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.ZAPI'),
       description: t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.ZAPI_DESC'),
       icon: 'i-woot-zapi',
-    });
-  }
+    },
+  ];
 
   return providers;
 });
@@ -119,10 +113,7 @@ const handleManualLinkClick = () => {
         />
       </div>
 
-      <div
-        v-if="isFeatureFlagEnabled(FEATURE_FLAGS.CHANNEL_ZAPI)"
-        class="mt-6 relative overflow-visible"
-      >
+      <div class="mt-6 relative overflow-visible">
         <img
           src="~dashboard/assets/images/curved-arrow.svg"
           alt=""

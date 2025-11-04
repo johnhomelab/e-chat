@@ -8,7 +8,6 @@ import { isPhoneE164OrEmpty, isNumber } from 'shared/helpers/Validators';
 
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import PromoBanner from 'dashboard/components-next/banner/PromoBanner.vue';
-import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 
 export default {
   components: {
@@ -30,15 +29,7 @@ export default {
   computed: {
     ...mapGetters({
       uiFlags: 'inboxes/getUIFlags',
-      isFeatureEnabledonAccount: 'accounts/isFeatureEnabledonAccount',
-      accountId: 'getCurrentAccountId',
     }),
-    isZapiEnabled() {
-      return this.isFeatureEnabledonAccount(
-        this.accountId,
-        FEATURE_FLAGS.CHANNEL_ZAPI
-      );
-    },
   },
   validations: {
     inboxName: { required },
@@ -98,7 +89,7 @@ export default {
 
 <template>
   <form class="flex flex-wrap flex-col mx-0" @submit.prevent="createChannel()">
-    <div v-if="isZapiEnabled" class="mb-6">
+    <div class="mb-6">
       <PromoBanner
         :title="$t('INBOX_MGMT.ADD.WHATSAPP.ZAPI_PROMO.SWITCH_BANNER.TITLE')"
         :description="

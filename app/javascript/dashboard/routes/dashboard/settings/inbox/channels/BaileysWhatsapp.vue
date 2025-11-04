@@ -12,13 +12,10 @@ import { isValidURL } from '../../../../../helper/URLHelper';
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import Switch from 'dashboard/components-next/switch/Switch.vue';
 import PromoBanner from 'dashboard/components-next/banner/PromoBanner.vue';
-import { usePolicy } from 'dashboard/composables/usePolicy';
-import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 
 const router = useRouter();
 const store = useStore();
 const { t } = useI18n();
-const { isFeatureFlagEnabled } = usePolicy();
 
 const inboxName = ref('');
 const phoneNumber = ref('');
@@ -99,10 +96,7 @@ const switchToZapi = () => {
 
 <template>
   <form class="flex flex-wrap mx-0" @submit.prevent="createChannel()">
-    <div
-      v-if="isFeatureFlagEnabled(FEATURE_FLAGS.CHANNEL_ZAPI)"
-      class="w-full mb-6"
-    >
+    <div class="w-full mb-6">
       <PromoBanner
         :title="$t('INBOX_MGMT.ADD.WHATSAPP.ZAPI_PROMO.SWITCH_BANNER.TITLE')"
         :description="

@@ -8,7 +8,9 @@ module Whatsapp::BaileysHandlers::Helpers # rubocop:disable Metrics/ModuleLength
   end
 
   def sender_lid
-    @raw_message[:key][:senderLid]
+    return @raw_message[:key][:senderLid] if @raw_message[:key].key?(:senderLid)
+
+    @raw_message[:key][:remoteJid] if jid_type == 'lid'
   end
 
   def incoming?

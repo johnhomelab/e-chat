@@ -2,7 +2,7 @@ class Channels::Whatsapp::ZapiQrCodeJob < ApplicationJob
   queue_as :default
 
   def perform(whatsapp_channel, attempt = 1)
-    return if attempt == 1 && whatsapp_channel.provider_connection['connection'] != 'close'
+    return if attempt == 1 && whatsapp_channel.provider_connection.present? && whatsapp_channel.provider_connection['connection'] != 'close'
     return if attempt > 1 && whatsapp_channel.provider_connection['connection'] != 'connecting'
 
     if attempt > 3

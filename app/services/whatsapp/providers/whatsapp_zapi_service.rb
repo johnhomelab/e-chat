@@ -46,7 +46,9 @@ class Whatsapp::Providers::WhatsappZapiService < Whatsapp::Providers::BaseServic
 
     raise ProviderUnavailableError unless process_response(response)
 
-    Channels::Whatsapp::ZapiQrCodeJob.perform_later(whatsapp_channel) if whatsapp_channel.provider_connection['connection'] == 'close'
+    if whatsapp_channel.provider_connection.blank? || whatsapp_channel.provider_connection['connection'] == 'close'
+      Channels::Whatsapp::ZapiQrCodeJob.perform_later(whatsapp_channel)
+    end
 
     true
   end

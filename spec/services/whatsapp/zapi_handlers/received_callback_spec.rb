@@ -376,6 +376,59 @@ describe Whatsapp::ZapiHandlers::ReceivedCallback do
       end
     end
 
+    context 'when contact_inbox exists with phone as source_id (manual creation)' do
+      let!(:existing_contact) do
+        create(:contact,
+               account: inbox.account,
+               identifier: nil,
+               phone_number: '+5511987654321',
+               name: 'Manually Created Contact')
+      end
+      let!(:existing_contact_inbox) do
+        create(:contact_inbox,
+               inbox: inbox,
+               contact: existing_contact,
+               source_id: '5511987654321')
+      end
+      let(:params) do
+        base_params.merge(
+          phone: '5511987654321',
+          chatLid: '123456789@lid'
+        )
+      end
+
+      it 'updates existing contact_inbox source_id from phone to LID' do
+        service.perform
+
+        expect(existing_contact_inbox.reload.source_id).to eq('123456789')
+      end
+
+      it 'updates existing contact identifier with LID' do
+        service.perform
+
+        expect(existing_contact.reload.identifier).to eq('123456789@lid')
+      end
+
+      it 'does not create a new contact_inbox' do
+        expect do
+          service.perform
+        end.not_to change(ContactInbox, :count)
+      end
+
+      it 'does not create a new contact' do
+        expect do
+          service.perform
+        end.not_to change(Contact, :count)
+      end
+
+      it 'reuses the existing contact for message' do
+        service.perform
+
+        message = Message.last
+        expect(message.sender).to eq(existing_contact)
+      end
+    end
+
     context 'when handling avatar' do
       let(:params) do
         base_params.merge(

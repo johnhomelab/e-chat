@@ -70,6 +70,18 @@ describe Whatsapp::Providers::WhatsappZapiService do
         expect(service.setup_channel_provider).to be(true)
       end
 
+      it 'schedules QR code job when connection is blank' do
+        whatsapp_channel.update!(provider_connection: {})
+
+        stub_request(:put, "#{api_instance_path_with_token}/update-every-webhooks")
+          .with(headers: stub_headers)
+          .to_return(status: 200)
+
+        service.setup_channel_provider
+
+        expect(Channels::Whatsapp::ZapiQrCodeJob).to have_been_enqueued.with(whatsapp_channel)
+      end
+
       it 'schedules QR code job when connection is closed' do
         whatsapp_channel.update!(provider_connection: { 'connection' => 'close' })
 

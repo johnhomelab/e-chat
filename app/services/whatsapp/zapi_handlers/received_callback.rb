@@ -73,12 +73,18 @@ module Whatsapp::ZapiHandlers::ReceivedCallback # rubocop:disable Metrics/Module
 
   def set_contact
     push_name = contact_name
+    source_id = @raw_message[:chatLid].to_s.gsub(/[^\d]/, '')
+    identifier = @raw_message[:chatLid]
 
-    contact_attributes = { name: push_name, identifier: @raw_message[:chatLid] }
-    contact_attributes[:phone_number] = "+#{@raw_message[:phone]}" unless @raw_message[:phone].ends_with?('@lid')
+    contact_attributes = { name: push_name, identifier: identifier }
+
+    unless @raw_message[:phone].ends_with?('@lid')
+      contact_attributes[:phone_number] = "+#{@raw_message[:phone]}"
+      update_existing_contact_inbox(@raw_message[:phone], source_id, identifier)
+    end
 
     contact_inbox = ::ContactInboxWithContactBuilder.new(
-      source_id: @raw_message[:chatLid].to_s.gsub(/[^\d]/, ''),
+      source_id: source_id,
       inbox: inbox,
       contact_attributes: contact_attributes
     ).perform
@@ -89,6 +95,18 @@ module Whatsapp::ZapiHandlers::ReceivedCallback # rubocop:disable Metrics/Module
     @contact.update!(name: push_name) if @contact.name == @raw_message[:phone]
     update_contact_phone_number
     try_update_contact_avatar
+  end
+
+  def update_existing_contact_inbox(phone, source_id, identifier)
+    # NOTE: This is useful when we create a new contact manually, so we don't have information about contact LID;
+    # With this, when we receive a message from that contact, we can link it properly.
+    existing_contact_inbox = inbox.contact_inboxes.find_by(source_id: phone)
+    return unless existing_contact_inbox
+
+    ActiveRecord::Base.transaction do
+      existing_contact_inbox.update!(source_id: source_id)
+      existing_contact_inbox.contact.update!(identifier: identifier)
+    end
   end
 
   def update_contact_phone_number

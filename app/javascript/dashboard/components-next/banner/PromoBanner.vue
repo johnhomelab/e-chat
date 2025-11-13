@@ -116,6 +116,7 @@ const handleCtaClick = () => {
           v-else
           sm
           :color-scheme="variant === 'success' ? 'primary' : 'secondary'"
+          type="button"
           @click="handleCtaClick"
         >
           {{ ctaText }}

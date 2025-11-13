@@ -55,9 +55,9 @@ class Whatsapp::Providers::WhatsappBaileysService < Whatsapp::Providers::BaseSer
     true
   end
 
-  def send_message(phone_number, message)
+  def send_message(recipient_id, message)
     @message = message
-    @phone_number = phone_number
+    @recipient_id = recipient_id
 
     if message.content_attributes[:is_reaction]
       @message_content = reaction_message_content
@@ -94,8 +94,8 @@ class Whatsapp::Providers::WhatsappBaileysService < Whatsapp::Providers::BaseSer
     process_response(response)
   end
 
-  def toggle_typing_status(typing_status, phone_number:, **)
-    @phone_number = phone_number
+  def toggle_typing_status(typing_status, recipient_id:, **)
+    @recipient_id = recipient_id
     status_map = {
       Events::Types::CONVERSATION_TYPING_ON => 'composing',
       Events::Types::CONVERSATION_RECORDING => 'recording',
@@ -136,8 +136,8 @@ class Whatsapp::Providers::WhatsappBaileysService < Whatsapp::Providers::BaseSer
     true
   end
 
-  def read_messages(messages, phone_number:, **)
-    @phone_number = phone_number
+  def read_messages(messages, recipient_id:, **)
+    @recipient_id = recipient_id
 
     response = HTTParty.post(
       "#{provider_url}/connections/#{whatsapp_channel.phone_number}/read-messages",
@@ -158,8 +158,8 @@ class Whatsapp::Providers::WhatsappBaileysService < Whatsapp::Providers::BaseSer
     true
   end
 
-  def unread_message(phone_number, message) # rubocop:disable Metrics/MethodLength
-    @phone_number = phone_number
+  def unread_message(recipient_id, message) # rubocop:disable Metrics/MethodLength
+    @recipient_id = recipient_id
 
     response = HTTParty.post(
       "#{provider_url}/connections/#{whatsapp_channel.phone_number}/chat-modify",
@@ -185,8 +185,8 @@ class Whatsapp::Providers::WhatsappBaileysService < Whatsapp::Providers::BaseSer
     true
   end
 
-  def received_messages(phone_number, messages)
-    @phone_number = phone_number
+  def received_messages(recipient_id, messages)
+    @recipient_id = recipient_id
 
     response = HTTParty.post(
       "#{provider_url}/connections/#{whatsapp_channel.phone_number}/send-receipts",
@@ -220,8 +220,8 @@ class Whatsapp::Providers::WhatsappBaileysService < Whatsapp::Providers::BaseSer
     response.parsed_response
   end
 
-  def on_whatsapp(phone_number)
-    @phone_number = phone_number
+  def on_whatsapp(recipient_id)
+    @recipient_id = recipient_id
 
     response = HTTParty.post(
       "#{provider_url}/connections/#{whatsapp_channel.phone_number}/on-whatsapp",
@@ -233,7 +233,7 @@ class Whatsapp::Providers::WhatsappBaileysService < Whatsapp::Providers::BaseSer
 
     raise ProviderUnavailableError unless process_response(response)
 
-    response.parsed_response&.first || { 'jid' => remote_jid, 'exists' => false, 'lid' => nil }
+    response.parsed_response&.first || { 'jid' => remote_jid, 'exists' => false }
   end
 
   private
@@ -303,9 +303,10 @@ class Whatsapp::Providers::WhatsappBaileysService < Whatsapp::Providers::BaseSer
     response.success?
   end
 
-  # FIXME: Make this a function with argument, instead of using instance variable
   def remote_jid
-    "#{@phone_number.delete('+')}@s.whatsapp.net"
+    return @recipient_id if @recipient_id.ends_with?('@lid')
+
+    "#{@recipient_id.delete('+')}@s.whatsapp.net"
   end
 
   def update_external_created_at(response)

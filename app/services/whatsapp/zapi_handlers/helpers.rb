@@ -12,17 +12,17 @@ module Whatsapp::ZapiHandlers::Helpers
   end
 
   def cache_message_source_id_in_redis
-    key = format(Redis::RedisKeys::MESSAGE_SOURCE_KEY, id: raw_message_id)
+    key = format(Redis::RedisKeys::MESSAGE_SOURCE_KEY, id: "#{inbox.id}_#{raw_message_id}")
     Redis::Alfred.setex(key, true)
   end
 
   def clear_message_source_id_from_redis
-    key = format(Redis::RedisKeys::MESSAGE_SOURCE_KEY, id: raw_message_id)
+    key = format(Redis::RedisKeys::MESSAGE_SOURCE_KEY, id: "#{inbox.id}_#{raw_message_id}")
     Redis::Alfred.delete(key)
   end
 
   def message_under_process?
-    key = format(Redis::RedisKeys::MESSAGE_SOURCE_KEY, id: raw_message_id)
+    key = format(Redis::RedisKeys::MESSAGE_SOURCE_KEY, id: "#{inbox.id}_#{raw_message_id}")
     Redis::Alfred.get(key)
   end
 end

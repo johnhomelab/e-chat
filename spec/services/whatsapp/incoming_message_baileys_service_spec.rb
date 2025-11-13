@@ -171,7 +171,7 @@ describe Whatsapp::IncomingMessageBaileysService do
       let(:timestamp) { Time.current.to_i }
       let(:raw_message) do
         {
-          key: { id: 'msg_123', remoteJid: '5511912345678@s.whatsapp.net', fromMe: false, senderLid: '12345678@lid' },
+          key: { id: 'msg_123', remoteJid: '12345678@lid', remoteJidAlt: '5511912345678@s.whatsapp.net', fromMe: false, addressingMode: 'lid' },
           pushName: 'John Doe',
           messageTimestamp: timestamp,
           message: { conversation: 'Hello from Baileys' }
@@ -360,23 +360,6 @@ describe Whatsapp::IncomingMessageBaileysService do
             expect(message.message_type).to eq('outgoing')
           end
 
-          it 'creates an outgoing self message' do
-            self_jid = "#{whatsapp_channel.phone_number.delete('+')}@s.whatsapp.net"
-            raw_message[:key][:remoteJid] = self_jid
-            raw_message[:key][:fromMe] = true
-            create(:account_user, account: inbox.account)
-
-            described_class.new(inbox: inbox, params: params).perform
-
-            conversation = inbox.conversations.last
-            message = conversation.messages.last
-
-            expect(message).to be_present
-            expect(message.content).to eq('Hello from Baileys')
-            expect(conversation.contact.name).to eq('John Doe')
-            expect(message.message_type).to eq('outgoing')
-          end
-
           it 'updates the contact name when name is the phone number and message has a pushName' do
             create(:contact, account: inbox.account, name: '5511912345678')
 
@@ -394,6 +377,23 @@ describe Whatsapp::IncomingMessageBaileysService do
 
             conversation = inbox.conversations.last
             expect(conversation.contact.name).to eq('Verified John')
+          end
+
+          it 'creates contact with LID only when phone number is not present' do
+            raw_message[:key][:remoteJid] = '87654321@lid'
+            raw_message[:key][:remoteJidAlt] = nil
+
+            described_class.new(inbox: inbox, params: params).perform
+
+            conversation = inbox.conversations.last
+            contact = conversation.contact
+            contact_inbox = conversation.contact_inbox
+
+            expect(contact).to be_present
+            expect(contact.phone_number).to be_nil
+            expect(contact.identifier).to eq('87654321@lid')
+            expect(contact.name).to eq('John Doe')
+            expect(contact_inbox.source_id).to eq('87654321')
           end
 
           it 'creates contact with phone number as name on outgoing message' do
@@ -416,9 +416,23 @@ describe Whatsapp::IncomingMessageBaileysService do
             expect(conversation.contact.name).to eq('5511912345678')
           end
 
+          it 'migrates existing phone-based contact inbox to LID-based when receiving message with LID' do
+            contact = create(:contact, account: inbox.account, name: 'Existing Contact', phone_number: '+5511912345678')
+            contact_inbox = create(:contact_inbox, inbox: inbox, contact: contact, source_id: '5511912345678')
+
+            described_class.new(inbox: inbox, params: params).perform
+
+            contact_inbox.reload
+            contact.reload
+
+            expect(contact_inbox.source_id).to eq('12345678')
+            expect(contact.identifier).to eq('12345678@lid')
+            expect(contact.phone_number).to eq('+5511912345678')
+          end
+
           it 'creates a message on an existing conversation' do
             contact = create(:contact, account: inbox.account, name: 'John Doe')
-            contact_inbox = create(:contact_inbox, inbox: inbox, contact: contact, source_id: '5511912345678')
+            contact_inbox = create(:contact_inbox, inbox: inbox, contact: contact, source_id: '12345678')
             existing_conversation = create(:conversation, inbox: inbox, contact_inbox: contact_inbox)
 
             described_class.new(inbox: inbox, params: params).perform
@@ -476,7 +490,7 @@ describe Whatsapp::IncomingMessageBaileysService do
       context 'when message type is reaction' do
         let!(:message) do
           contact = create(:contact, account: inbox.account, name: '5511912345678')
-          contact_inbox = create(:contact_inbox, inbox: inbox, contact: contact, source_id: '5511912345678')
+          contact_inbox = create(:contact_inbox, inbox: inbox, contact: contact, source_id: '12345678')
           conversation = create(:conversation, inbox: inbox, contact_inbox: contact_inbox)
           create(:message, inbox: inbox, conversation: conversation, source_id: 'msg_123')
         end
@@ -485,7 +499,7 @@ describe Whatsapp::IncomingMessageBaileysService do
           raw_message[:key][:id] = 'reaction_123'
           raw_message[:message] = {
             reactionMessage: {
-              key: { remoteJid: '5511912345678@s.whatsapp.net', fromMe: true, id: 'msg_123' },
+              key: { remoteJid: '12345678@lid', fromMe: true, id: 'msg_123' },
               text: '👍'
             }
           }
@@ -502,7 +516,7 @@ describe Whatsapp::IncomingMessageBaileysService do
           raw_message[:key][:id] = 'reaction_123'
           raw_message[:message] = {
             reactionMessage: {
-              key: { remoteJid: '5511912345678@s.whatsapp.net', fromMe: true, id: 'msg_123' },
+              key: { remoteJid: '12345678@lid', fromMe: true, id: 'msg_123' },
               text: ''
             }
           }
@@ -522,7 +536,8 @@ describe Whatsapp::IncomingMessageBaileysService do
               type: 'notify',
               messages: [
                 {
-                  key: { id: 'msg_123', remoteJid: '5511912345678@s.whatsapp.net', fromMe: false },
+                  key: { id: 'msg_123', remoteJid: '12345678@lid', remoteJidAlt: '5511912345678@s.whatsapp.net', fromMe: false,
+                         addressingMode: 'lid' },
                   message: { imageMessage: { caption: 'Hello from Baileys', mimetype: 'image/png' } },
                   pushName: 'John Doe'
                 }
@@ -574,7 +589,8 @@ describe Whatsapp::IncomingMessageBaileysService do
               type: 'notify',
               messages: [
                 {
-                  key: { id: 'msg_123', remoteJid: '5511912345678@s.whatsapp.net', fromMe: false },
+                  key: { id: 'msg_123', remoteJid: '12345678@lid', remoteJidAlt: '5511912345678@s.whatsapp.net', fromMe: false,
+                         addressingMode: 'lid' },
                   message: { videoMessage: { caption: 'Hello from Baileys', mimetype: 'video/mp4' } },
                   pushName: 'John Doe'
                 }
@@ -617,7 +633,8 @@ describe Whatsapp::IncomingMessageBaileysService do
               type: 'notify',
               messages: [
                 {
-                  key: { id: 'msg_123', remoteJid: '5511912345678@s.whatsapp.net', fromMe: false },
+                  key: { id: 'msg_123', remoteJid: '12345678@lid', remoteJidAlt: '5511912345678@s.whatsapp.net', fromMe: false,
+                         addressingMode: 'lid' },
                   message: { documentMessage: { fileName: filename } },
                   pushName: 'John Doe'
                 }
@@ -668,7 +685,8 @@ describe Whatsapp::IncomingMessageBaileysService do
               type: 'notify',
               messages: [
                 {
-                  key: { id: 'msg_123', remoteJid: '5511912345678@s.whatsapp.net', fromMe: false },
+                  key: { id: 'msg_123', remoteJid: '12345678@lid', remoteJidAlt: '5511912345678@s.whatsapp.net', fromMe: false,
+                         addressingMode: 'lid' },
                   message: { audioMessage: { mimetype: 'audio/opus' } },
                   pushName: 'John Doe'
                 }
@@ -699,7 +717,8 @@ describe Whatsapp::IncomingMessageBaileysService do
               type: 'notify',
               messages: [
                 {
-                  key: { id: 'msg_123', remoteJid: '5511912345678@s.whatsapp.net', fromMe: false },
+                  key: { id: 'msg_123', remoteJid: '12345678@lid', remoteJidAlt: '5511912345678@s.whatsapp.net', fromMe: false,
+                         addressingMode: 'lid' },
                   message: { stickerMessage: { mimetype: 'image/png' } },
                   pushName: 'John Doe'
                 }
@@ -724,13 +743,13 @@ describe Whatsapp::IncomingMessageBaileysService do
       context 'when processing multiple messages' do
         it 'creates separate contacts and conversations for each message' do
           raw_message1 = {
-            key: { id: 'msg_123', remoteJid: '5511912345678@s.whatsapp.net', fromMe: false },
+            key: { id: 'msg_123', remoteJid: '5511912345678@s.whatsapp.net', remoteJidAlt: '12345678@lid', fromMe: false, addressingMode: 'pn' },
             pushName: 'John Doe',
             messageTimestamp: timestamp,
             message: { conversation: 'Hello from Baileys' }
           }
           raw_message2 = {
-            key: { id: 'msg_124', remoteJid: '5511987654321@s.whatsapp.net', fromMe: false },
+            key: { id: 'msg_124', remoteJid: '5511987654321@s.whatsapp.net', remoteJidAlt: '87654321@lid', fromMe: false, addressingMode: 'pn' },
             pushName: 'Jane Doe',
             messageTimestamp: timestamp,
             message: { conversation: 'Hello from another user' }
@@ -764,9 +783,10 @@ describe Whatsapp::IncomingMessageBaileysService do
       end
 
       context 'when jid type is lid' do
-        it 'processes the message with phone number from lid jid type' do
-          raw_message[:key][:remoteJid] = '12345678@lid'
-          raw_message[:key][:senderPn] = '5511912345678@s.whatsapp.net'
+        it 'processes the message with phone number from addressingMode pn' do
+          raw_message[:key][:remoteJid] = '5511912345678@s.whatsapp.net'
+          raw_message[:key][:remoteJidAlt] = '12345678@lid'
+          raw_message[:key][:addressingMode] = 'pn'
 
           described_class.new(inbox: inbox, params: params).perform
 
@@ -778,82 +798,90 @@ describe Whatsapp::IncomingMessageBaileysService do
         end
       end
 
-      it 'skips message if senderPn is not present' do
-        raw_message[:key][:remoteJid] = '12345678@lid'
+      it 'skips message if LID cannot be extracted' do
+        raw_message[:key][:remoteJid] = 'invalid_jid'
+        raw_message[:key][:remoteJidAlt] = nil
+        raw_message[:key][:addressingMode] = 'lid'
 
         described_class.new(inbox: inbox, params: params).perform
 
         expect(inbox.conversations).to be_empty
       end
 
-      context 'when handling senderLid field' do
-        it 'creates contact with identifier from senderLid' do
+      context 'when handling LID field' do
+        it 'creates contact with LID as source_id and identifier' do
           described_class.new(inbox: inbox, params: params).perform
 
           contact = inbox.contacts.last
+          contact_inbox = inbox.contact_inboxes.last
 
           expect(contact.identifier).to eq('12345678@lid')
+          expect(contact_inbox.source_id).to eq('12345678')
         end
 
-        it 'updates contact identifier for existing contacts without identifier' do
+        it 'updates existing contact_inbox from phone to LID source_id' do
           contact = create(:contact, account: inbox.account, phone_number: '+5511912345678', identifier: nil)
           create(:contact_inbox, inbox: inbox, contact: contact, source_id: '5511912345678')
 
           described_class.new(inbox: inbox, params: params).perform
 
+          contact_inbox = inbox.contact_inboxes.find_by(contact: contact)
+          expect(contact_inbox.source_id).to eq('12345678')
           expect(contact.reload.identifier).to eq('12345678@lid')
+          expect(contact.phone_number).to eq('+5511912345678')
         end
 
-        it 'does not update contact identifier if already present' do
-          contact = create(:contact, account: inbox.account, phone_number: '+5511912345678', identifier: 'existing@lid')
-          create(:contact_inbox, inbox: inbox, contact: contact, source_id: '5511912345678')
+        it 'does not update contact_inbox if source_id is already LID' do
+          contact = create(:contact, account: inbox.account, phone_number: '+5511912345678', identifier: '12345678@lid')
+          contact_inbox = create(:contact_inbox, inbox: inbox, contact: contact, source_id: '12345678')
 
           described_class.new(inbox: inbox, params: params).perform
 
-          expect(contact.reload.identifier).to eq('existing@lid')
+          expect(contact_inbox.reload.source_id).to eq('12345678')
+          expect(contact.reload.identifier).to eq('12345678@lid')
         end
       end
 
       context 'when updating contact information' do
         it 'updates contact phone number if blank' do
           contact = create(:contact, account: inbox.account, phone_number: nil, identifier: '12345678@lid')
-          create(:contact_inbox, inbox: inbox, contact: contact, source_id: '5511912345678')
+          create(:contact_inbox, inbox: inbox, contact: contact, source_id: '12345678')
 
           described_class.new(inbox: inbox, params: params).perform
 
           expect(contact.reload.phone_number).to eq('+5511912345678')
         end
 
-        it 'does not update contact phone number if already present' do
-          contact = create(:contact, account: inbox.account, phone_number: '+9999999999', identifier: '12345678@lid')
-          create(:contact_inbox, inbox: inbox, contact: contact, source_id: '5511912345678')
-
-          described_class.new(inbox: inbox, params: params).perform
-
-          expect(contact.reload.phone_number).to eq('+9999999999')
-        end
-
         it 'updates contact name if it matches phone number' do
           contact = create(:contact, account: inbox.account, name: '5511912345678', phone_number: '+5511912345678', identifier: '12345678@lid')
-          create(:contact_inbox, inbox: inbox, contact: contact, source_id: '5511912345678')
+          create(:contact_inbox, inbox: inbox, contact: contact, source_id: '12345678')
 
           described_class.new(inbox: inbox, params: params).perform
 
           expect(contact.reload.name).to eq('John Doe')
         end
 
-        it 'updates contact name if it matches sender LID' do
+        it 'updates contact name if it matches LID source_id' do
+          contact = create(:contact, account: inbox.account, name: '12345678', phone_number: '+5511912345678', identifier: '12345678@lid')
+          create(:contact_inbox, inbox: inbox, contact: contact, source_id: '12345678')
+
+          described_class.new(inbox: inbox, params: params).perform
+
+          expect(contact.reload.name).to eq('John Doe')
+        end
+
+        it 'updates contact name if it matches identifier' do
           contact = create(:contact, account: inbox.account, name: '12345678@lid', phone_number: '+5511912345678', identifier: '12345678@lid')
-          create(:contact_inbox, inbox: inbox, contact: contact, source_id: '5511912345678')
+          create(:contact_inbox, inbox: inbox, contact: contact, source_id: '12345678')
 
           described_class.new(inbox: inbox, params: params).perform
 
           expect(contact.reload.name).to eq('John Doe')
         end
 
-        it 'does not update contact name if it is different from phone number and sender LID' do
+        it 'does not update contact name if it is different from phone number, source_id, and identifier' do
           contact = create(:contact, account: inbox.account, name: 'Existing Name', phone_number: '+5511912345678', identifier: '12345678@lid')
-          create(:contact_inbox, inbox: inbox, contact: contact, source_id: '5511912345678')
+          create(:contact_inbox, inbox: inbox, contact: contact, source_id: '12345678')
 
           described_class.new(inbox: inbox, params: params).perform
 
@@ -958,7 +986,7 @@ describe Whatsapp::IncomingMessageBaileysService do
   end
 
   def format_message_source_key(message_id)
-    format(Redis::RedisKeys::MESSAGE_SOURCE_KEY, id: message_id)
+    format(Redis::RedisKeys::MESSAGE_SOURCE_KEY, id: "#{inbox.id}_#{message_id}")
   end
 
   def stub_download

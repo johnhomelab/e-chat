@@ -51,14 +51,10 @@ class Whatsapp::SendOnWhatsappService < Base::SendOnChannelService
   end
 
   def recipient_id
-    return message.conversation.contact_inbox.source_id unless channel.provider == 'zapi'
+    return message.conversation.contact_inbox.source_id unless %w[baileys zapi].include?(channel.provider)
 
-    if message.conversation.contact.phone_number.present?
-      message.conversation.contact.phone_number.gsub(/[^\d]/, '')
-    else
-      # NOTE: `identifier` is the WhatsApp LID format. See `Whatsapp::ZapiHandlers::ReceivedCallback#set_contact`
-      message.conversation.contact.identifier
-    end
+    # NOTE: `identifier` must be in the WhatsApp LID format
+    message.conversation.contact.phone_number&.gsub(/[^\d]/, '') || message.conversation.contact.identifier
   end
 
   def template_params

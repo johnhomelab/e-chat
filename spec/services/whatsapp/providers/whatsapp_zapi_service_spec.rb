@@ -208,7 +208,7 @@ describe Whatsapp::Providers::WhatsappZapiService do
           )
           .to_return(status: 200)
 
-        result = service.read_messages(messages, phone_number: "+#{test_send_phone_number}")
+        result = service.read_messages(messages, recipient_id: "+#{test_send_phone_number}")
 
         expect(result).to be(true)
       end
@@ -223,7 +223,7 @@ describe Whatsapp::Providers::WhatsappZapiService do
         allow(Rails.logger).to receive(:error)
 
         expect do
-          service.read_messages(messages, phone_number: "+#{test_send_phone_number}")
+          service.read_messages(messages, recipient_id: "+#{test_send_phone_number}")
         end.to raise_error(Whatsapp::Providers::WhatsappZapiService::ProviderUnavailableError)
       end
     end

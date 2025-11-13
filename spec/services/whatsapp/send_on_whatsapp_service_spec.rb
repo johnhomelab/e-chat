@@ -397,8 +397,9 @@ describe Whatsapp::SendOnWhatsappService do
       end
 
       it 'calls channel.send_message if channel is not locked on outgoing message' do
+        conversation.contact.update!(phone_number: '+123456789')
         message = create(:message, message_type: :outgoing, content: 'test', conversation: conversation)
-        allow(whatsapp_channel).to receive(:send_message).with(conversation.contact_inbox.source_id, message).and_return('123456789')
+        allow(whatsapp_channel).to receive(:send_message).with('123456789', message).and_return('123456789')
 
         described_class.new(message: message).perform
 

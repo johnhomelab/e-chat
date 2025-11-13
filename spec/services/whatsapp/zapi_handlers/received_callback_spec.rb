@@ -1217,6 +1217,6 @@ describe Whatsapp::ZapiHandlers::ReceivedCallback do
   private
 
   def format_message_source_key(message_id)
-    format(Redis::RedisKeys::MESSAGE_SOURCE_KEY, id: message_id)
+    format(Redis::RedisKeys::MESSAGE_SOURCE_KEY, id: "#{inbox.id}_#{message_id}")
   end
 end

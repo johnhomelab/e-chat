@@ -3,14 +3,12 @@ module Whatsapp::BaileysHandlers::Helpers # rubocop:disable Metrics/ModuleLength
 
   private
 
-  def raw_message_id
-    @raw_message[:key][:id]
+  def unwrap_ephemeral_message(msg)
+    msg.key?(:ephemeralMessage) ? msg.dig(:ephemeralMessage, :message) : msg
   end
 
-  def sender_lid
-    return @raw_message[:key][:senderLid] if @raw_message[:key].key?(:senderLid)
-
-    @raw_message[:key][:remoteJid] if jid_type == 'lid'
+  def raw_message_id
+    @raw_message[:key][:id]
   end
 
   def incoming?
@@ -42,7 +40,7 @@ module Whatsapp::BaileysHandlers::Helpers # rubocop:disable Metrics/ModuleLength
   end
 
   def message_type # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity,Metrics/MethodLength,Metrics/AbcSize
-    msg = @raw_message[:message]
+    msg = unwrap_ephemeral_message(@raw_message[:message])
     if msg.key?(:conversation) || msg.dig(:extendedTextMessage, :text).present?
       'text'
     elsif msg.key?(:imageMessage)
@@ -72,22 +70,23 @@ module Whatsapp::BaileysHandlers::Helpers # rubocop:disable Metrics/ModuleLength
   end
 
   def message_content # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity,Metrics/MethodLength
+    msg = unwrap_ephemeral_message(@raw_message[:message])
     case message_type
     when 'text'
-      @raw_message.dig(:message, :conversation) || @raw_message.dig(:message, :extendedTextMessage, :text)
+      msg[:conversation] || msg.dig(:extendedTextMessage, :text)
     when 'image'
-      @raw_message.dig(:message, :imageMessage, :caption)
+      msg.dig(:imageMessage, :caption)
     when 'video'
-      @raw_message.dig(:message, :videoMessage, :caption)
+      msg.dig(:videoMessage, :caption)
     when 'file'
-      @raw_message.dig(:message, :documentMessage, :caption).presence ||
-        @raw_message.dig(:message, :documentWithCaptionMessage, :message, :documentMessage, :caption)
+      msg.dig(:documentMessage, :caption).presence ||
+        msg.dig(:documentWithCaptionMessage, :message, :documentMessage, :caption)
     when 'reaction'
-      @raw_message.dig(:message, :reactionMessage, :text)
+      msg.dig(:reactionMessage, :text)
     when 'contact'
       # FIXME: Missing specs
-      display_name = @raw_message.dig(:message, :contactMessage, :displayName)
-      vcard = @raw_message.dig(:message, :contactMessage, :vcard)
+      display_name = msg.dig(:contactMessage, :displayName)
+      vcard = msg.dig(:contactMessage, :vcard)
       match_phone_number = vcard&.match(/waid=(\d+)/)
 
       return display_name unless match_phone_number
@@ -95,6 +94,24 @@ module Whatsapp::BaileysHandlers::Helpers # rubocop:disable Metrics/ModuleLength
 
       "#{display_name} - #{match_phone_number[1]}" if match_phone_number
     end
+  end
+
+  def reply_to_message_id # rubocop:disable Metrics/CyclomaticComplexity
+    msg = unwrap_ephemeral_message(@raw_message[:message])
+    message_key = case message_type
+                  when 'text' then :extendedTextMessage
+                  when 'image' then :imageMessage
+                  when 'sticker' then :stickerMessage
+                  when 'audio' then :audioMessage
+                  when 'video' then :videoMessage
+                  when 'contact' then :contactMessage
+                  when 'file'
+                    context_info = msg.dig(:documentMessage, :contextInfo).presence ||
+                                   msg.dig(:documentWithCaptionMessage, :message, :documentMessage, :contextInfo)
+                    return context_info&.dig(:stanzaId)
+                  end
+
+    msg.dig(message_key, :contextInfo, :stanzaId) if message_key
   end
 
   def file_content_type
@@ -106,28 +123,31 @@ module Whatsapp::BaileysHandlers::Helpers # rubocop:disable Metrics/ModuleLength
   end
 
   def message_mimetype
+    msg = unwrap_ephemeral_message(@raw_message[:message])
     case message_type
     when 'image'
-      @raw_message.dig(:message, :imageMessage, :mimetype)
+      msg.dig(:imageMessage, :mimetype)
     when 'sticker'
-      @raw_message.dig(:message, :stickerMessage, :mimetype)
+      msg.dig(:stickerMessage, :mimetype)
     when 'video'
-      @raw_message.dig(:message, :videoMessage, :mimetype)
+      msg.dig(:videoMessage, :mimetype)
     when 'audio'
-      @raw_message.dig(:message, :audioMessage, :mimetype)
+      msg.dig(:audioMessage, :mimetype)
     when 'file'
-      @raw_message.dig(:message, :documentMessage, :mimetype).presence ||
-        @raw_message.dig(:message, :documentWithCaptionMessage, :message, :documentMessage, :mimetype)
+      msg.dig(:documentMessage, :mimetype).presence ||
+        msg.dig(:documentWithCaptionMessage, :message, :documentMessage, :mimetype)
     end
   end
 
-  def phone_number_from_jid
-    reference_field = jid_type == 'lid' ? :senderPn : :remoteJid
+  def extract_from_jid(type:)
+    addressing_mode = @raw_message[:key][:addressingMode]
+    reference_field = addressing_mode && addressing_mode != type ? :remoteJidAlt : :remoteJid
+
     jid = @raw_message[:key][reference_field]
     return unless jid
 
     # NOTE: jid shape is `<user>_<agent>:<device>@<server>`
-    # https://github.com/WhiskeySockets/Baileys/blob/v6.7.16/src/WABinary/jid-utils.ts#L19
+    # https://github.com/WhiskeySockets/Baileys/blob/v7.0.0-rc.6/src/WABinary/jid-utils.ts#L52
     jid.split('@').first.split(':').first.split('_').first
   end
 
@@ -136,12 +156,17 @@ module Whatsapp::BaileysHandlers::Helpers # rubocop:disable Metrics/ModuleLength
     name = @raw_message[:verifiedBizName].presence || @raw_message[:pushName]
     return name if name.presence && (self_message? || incoming?)
 
-    phone_number_from_jid
+    extract_from_jid(type: 'pn') || extract_from_jid(type: 'lid')
   end
 
   def self_message?
-    # TODO: Handle denormalized Brazilian phone numbers
-    phone_number_from_jid == inbox.channel.phone_number.delete('+')
+    normalize_phone_number(extract_from_jid(type: 'pn')) == normalize_phone_number(inbox.channel.phone_number.delete('+'))
+  end
+
+  def normalize_phone_number(phone_number)
+    return unless phone_number
+
+    Whatsapp::PhoneNormalizers::BrazilPhoneNormalizer.new.normalize(phone_number)
   end
 
   def ignore_message?
@@ -162,22 +187,23 @@ module Whatsapp::BaileysHandlers::Helpers # rubocop:disable Metrics/ModuleLength
     # TODO: Current logic will never update the contact avatar if their profile picture changes on WhatsApp.
     return if @contact.avatar.attached?
 
-    profile_pic_url = fetch_profile_picture_url(phone_number_from_jid)
+    phone = extract_from_jid(type: 'pn')
+    profile_pic_url = fetch_profile_picture_url(phone) if phone
     ::Avatar::AvatarFromUrlJob.perform_later(@contact, profile_pic_url) if profile_pic_url
   end
 
   def message_under_process?
-    key = format(Redis::RedisKeys::MESSAGE_SOURCE_KEY, id: raw_message_id)
+    key = format(Redis::RedisKeys::MESSAGE_SOURCE_KEY, id: "#{inbox.id}_#{raw_message_id}")
     Redis::Alfred.get(key)
   end
 
   def cache_message_source_id_in_redis
-    key = format(Redis::RedisKeys::MESSAGE_SOURCE_KEY, id: raw_message_id)
+    key = format(Redis::RedisKeys::MESSAGE_SOURCE_KEY, id: "#{inbox.id}_#{raw_message_id}")
     ::Redis::Alfred.setex(key, true)
   end
 
   def clear_message_source_id_from_redis
-    key = format(Redis::RedisKeys::MESSAGE_SOURCE_KEY, id: raw_message_id)
+    key = format(Redis::RedisKeys::MESSAGE_SOURCE_KEY, id: "#{inbox.id}_#{raw_message_id}")
     ::Redis::Alfred.delete(key)
   end
 end

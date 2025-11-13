@@ -1,4 +1,4 @@
-module Whatsapp::BaileysHandlers::MessagesUpsert
+module Whatsapp::BaileysHandlers::MessagesUpsert # rubocop:disable Metrics/ModuleLength
   include Whatsapp::BaileysHandlers::Helpers
   include BaileysHelper
 
@@ -20,9 +20,9 @@ module Whatsapp::BaileysHandlers::MessagesUpsert
     end
   end
 
-  def handle_message # rubocop:disable Metrics/CyclomaticComplexity
+  def handle_message
     return unless %w[lid user].include?(jid_type)
-    return if jid_type == 'lid' && !phone_number_from_jid
+    return unless extract_from_jid(type: 'lid')
     return if ignore_message?
     return if find_message_by_source_id(raw_message_id) || message_under_process?
 
@@ -42,27 +42,51 @@ module Whatsapp::BaileysHandlers::MessagesUpsert
   end
 
   def set_contact
+    phone = extract_from_jid(type: 'pn')
+    source_id = extract_from_jid(type: 'lid')
+    identifier = "#{source_id}@lid"
+
+    update_existing_contact_inbox(phone, source_id, identifier) if phone
+
     contact_inbox = ::ContactInboxWithContactBuilder.new(
-      # FIXME: update the source_id to use sender LID
-      source_id: phone_number_from_jid,
+      source_id: source_id,
       inbox: inbox,
-      contact_attributes: { name: contact_name, phone_number: "+#{phone_number_from_jid}", identifier: sender_lid }
+      contact_attributes: { name: contact_name, phone_number: ("+#{phone}" if phone), identifier: identifier }
     ).perform
 
     @contact_inbox = contact_inbox
     @contact = contact_inbox.contact
 
-    update_contact_information
+    update_contact_info(phone, source_id, identifier)
   end
 
-  def update_contact_information
-    updates = {}
-    updates[:identifier] = sender_lid if @contact.identifier.blank?
-    updates[:phone_number] = "+#{phone_number_from_jid}" if @contact.phone_number.blank?
-    updates[:name] = contact_name if @contact.name == phone_number_from_jid || @contact.name == sender_lid
+  def update_existing_contact_inbox(phone, source_id, identifier)
+    # NOTE: This is useful when we create a new contact manually, so we don't have information about contact LID;
+    # With this, when we receive a message from that contact, we can link it properly.
+    existing_contact_inbox = inbox.contact_inboxes.find_by(source_id: phone)
+    return unless existing_contact_inbox
+    return if inbox.contact_inboxes.exists?(source_id: source_id)
 
-    @contact.update!(updates) if updates.present?
+    existing_contact = existing_contact_inbox.contact
+    conflicting_identifier = inbox.account.contacts.find_by(identifier: identifier)
+    conflicting_phone = inbox.account.contacts.find_by(phone_number: "+#{phone}")
 
+    return if conflicting_identifier && conflicting_identifier.id != existing_contact.id
+    return if conflicting_phone && conflicting_phone.id != existing_contact.id
+
+    ActiveRecord::Base.transaction do
+      existing_contact_inbox.update!(source_id: source_id)
+      existing_contact.update!(identifier: identifier, phone_number: "+#{phone}")
+    end
+  end
+
+  def update_contact_info(phone, source_id, identifier)
+    update_params = {}
+    update_params[:phone_number] = "+#{phone}" if phone
+    update_params[:identifier] = identifier
+    update_params[:name] = contact_name if @contact.name.in?([phone, source_id, identifier])
+
+    @contact.update!(update_params) if update_params.present?
     try_update_contact_avatar
   end
 
@@ -91,10 +115,13 @@ module Whatsapp::BaileysHandlers::MessagesUpsert
 
   def message_content_attributes
     type = message_type
+    msg = unwrap_ephemeral_message(@raw_message[:message])
     content_attributes = { external_created_at: baileys_extract_message_timestamp(@raw_message[:messageTimestamp]) }
     if type == 'reaction'
-      content_attributes[:in_reply_to_external_id] = @raw_message.dig(:message, :reactionMessage, :key, :id)
+      content_attributes[:in_reply_to_external_id] = msg.dig(:reactionMessage, :key, :id)
       content_attributes[:is_reaction] = true
+    elsif reply_to_message_id
+      content_attributes[:in_reply_to_external_id] = reply_to_message_id
     elsif type == 'unsupported'
       content_attributes[:is_unsupported] = true
     end
@@ -104,13 +131,14 @@ module Whatsapp::BaileysHandlers::MessagesUpsert
 
   def handle_attach_media
     attachment_file = download_attachment_file
+    msg = unwrap_ephemeral_message(@raw_message[:message])
 
     attachment = @message.attachments.build(
       account_id: @message.account_id,
       file_type: file_content_type.to_s,
       file: { io: attachment_file, filename: filename, content_type: message_mimetype }
     )
-    attachment.meta = { is_recorded_audio: true } if @raw_message.dig(:message, :audioMessage, :ptt)
+    attachment.meta = { is_recorded_audio: true } if msg.dig(:audioMessage, :ptt)
   rescue Down::Error => e
     @message.update!(is_unsupported: true)
 
@@ -122,7 +150,8 @@ module Whatsapp::BaileysHandlers::MessagesUpsert
   end
 
   def filename
-    filename = @raw_message.dig(:message, :documentMessage, :fileName)
+    msg = unwrap_ephemeral_message(@raw_message[:message])
+    filename = msg.dig(:documentMessage, :fileName)
     return filename if filename.present?
 
     ext = ".#{message_mimetype.split(';').first.split('/').last}" if message_mimetype.present?

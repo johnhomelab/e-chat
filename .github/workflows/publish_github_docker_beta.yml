@@ -1,4 +1,4 @@
-name: Publish Chatwoot docker images to GitHub
+name: Publish Chatwoot beta docker images to GitHub
 
 permissions:
   contents: read
@@ -6,7 +6,7 @@ permissions:
 
 on:
   release:
-    types: [released]
+    types: [prereleased]
   workflow_dispatch:
 
 env:
@@ -80,7 +80,7 @@ jobs:
           push: ${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}
           tags: |
             ${{ env.GITHUB_REPO }}:${{ env.SANITIZED_REF }}
-            ${{ env.GITHUB_REPO }}:latest
+            ${{ env.GITHUB_REPO }}:beta
 
       - name: Export digest
         run: |
@@ -126,7 +126,7 @@ jobs:
           SANITIZED_REF=$(echo "$GIT_REF" | sed 's/\//-/g')
           docker buildx imagetools create \
             -t ghcr.io/${{ github.repository }}:${SANITIZED_REF} \
-            -t ghcr.io/${{ github.repository }}:latest \
+            -t ghcr.io/${{ github.repository }}:beta \
             $(printf 'ghcr.io/${{ github.repository }}@sha256:%s ' *)
 
       - name: Inspect image
@@ -136,4 +136,4 @@ jobs:
           SANITIZED_REF=$(echo "$GIT_REF" | sed 's/\//-/g')
           REPO="ghcr.io/${{ github.repository }}"
           docker buildx imagetools inspect ${REPO}:${SANITIZED_REF}
-          docker buildx imagetools inspect ${REPO}:latest
+          docker buildx imagetools inspect ${REPO}:beta

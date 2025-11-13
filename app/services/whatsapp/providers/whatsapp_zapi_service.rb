@@ -80,7 +80,7 @@ class Whatsapp::Providers::WhatsappZapiService < Whatsapp::Providers::BaseServic
     response.parsed_response['value']
   end
 
-  def read_messages(messages, phone_number:, **)
+  def read_messages(messages, recipient_id:, **)
     # NOTE: Z-API will handle marking previous messages as read.
     last_message = messages.last
 
@@ -88,7 +88,7 @@ class Whatsapp::Providers::WhatsappZapiService < Whatsapp::Providers::BaseServic
       "#{api_instance_path_with_token}/read-message",
       headers: api_headers,
       body: {
-        phone: phone_number.delete('+'),
+        phone: recipient_id.delete('+'),
         messageId: last_message.source_id
       }.to_json
     )

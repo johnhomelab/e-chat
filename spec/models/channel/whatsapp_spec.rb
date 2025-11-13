@@ -184,9 +184,10 @@ RSpec.describe Channel::Whatsapp do
     let(:conversation) { create(:conversation) }
 
     it 'calls provider service method' do
+      message = create(:message, conversation: conversation)
       provider_double = instance_double(Whatsapp::Providers::WhatsappBaileysService, toggle_typing_status: nil)
       allow(provider_double).to receive(:toggle_typing_status)
-        .with(Events::Types::CONVERSATION_TYPING_ON, phone_number: conversation.contact.phone_number)
+        .with(Events::Types::CONVERSATION_TYPING_ON, recipient_id: conversation.contact.identifier, last_message: message)
       allow(Whatsapp::Providers::WhatsappBaileysService).to receive(:new)
         .with(whatsapp_channel: channel)
         .and_return(provider_double)
@@ -242,11 +243,11 @@ RSpec.describe Channel::Whatsapp do
       create(:channel_whatsapp, provider: 'baileys', provider_config: { mark_as_read: true }, validate_provider_config: false, sync_templates: false)
     end
     let(:conversation) { create(:conversation) }
-    let(:message) { create(:message) }
+    let(:message) { create(:message, conversation: conversation) }
 
     it 'calls provider service method' do
       provider_double = instance_double(Whatsapp::Providers::WhatsappBaileysService, read_messages: nil)
-      allow(provider_double).to receive(:read_messages).with([message], phone_number: conversation.contact.phone_number)
+      allow(provider_double).to receive(:read_messages).with([message], recipient_id: conversation.contact.identifier)
       allow(Whatsapp::Providers::WhatsappBaileysService).to receive(:new)
         .with(whatsapp_channel: channel)
         .and_return(provider_double)
@@ -259,7 +260,7 @@ RSpec.describe Channel::Whatsapp do
     it 'call method when the provider config mark_as_read is nil' do
       channel.update!(provider_config: {})
       provider_double = instance_double(Whatsapp::Providers::WhatsappBaileysService, read_messages: nil)
-      allow(provider_double).to receive(:read_messages).with([message], phone_number: conversation.contact.phone_number)
+      allow(provider_double).to receive(:read_messages).with([message], recipient_id: conversation.contact.identifier)
       allow(Whatsapp::Providers::WhatsappBaileysService).to receive(:new)
         .with(whatsapp_channel: channel)
         .and_return(provider_double)
@@ -332,7 +333,7 @@ RSpec.describe Channel::Whatsapp do
 
     it 'calls provider service method' do
       provider_double = instance_double(Whatsapp::Providers::WhatsappBaileysService, received_messages: nil)
-      allow(provider_double).to receive(:received_messages).with(conversation.contact.phone_number, messages)
+      allow(provider_double).to receive(:received_messages).with(conversation.contact.identifier, messages)
       allow(Whatsapp::Providers::WhatsappBaileysService).to receive(:new)
         .with(whatsapp_channel: channel)
         .and_return(provider_double)
@@ -412,6 +413,53 @@ RSpec.describe Channel::Whatsapp do
 
           expect(channel).to be_destroyed
         end
+      end
+    end
+  end
+
+  describe '#provider_connection_data' do
+    let(:channel) do
+      create(:channel_whatsapp, provider: 'baileys', validate_provider_config: false, sync_templates: false,
+                                provider_connection: {
+                                  'connection' => 'open',
+                                  'qr_data_url' => 'data:image/png;base64,test',
+                                  'error' => 'some_error'
+                                })
+    end
+
+    context 'when user is an administrator' do
+      it 'includes qr_data_url and error in the response' do
+        account_user = create(:account_user, account: channel.account, role: :administrator)
+        allow(Current).to receive(:account_user).and_return(account_user)
+
+        data = channel.provider_connection_data
+
+        expect(data).to eq({
+                             connection: 'open',
+                             qr_data_url: 'data:image/png;base64,test',
+                             error: 'some_error'
+                           })
+      end
+    end
+
+    context 'when user is not an administrator' do
+      it 'excludes qr_data_url and error from the response' do
+        account_user = create(:account_user, account: channel.account, role: :agent)
+        allow(Current).to receive(:account_user).and_return(account_user)
+
+        data = channel.provider_connection_data
+
+        expect(data).to eq({ connection: 'open' })
+      end
+    end
+
+    context 'when Current.account_user is nil' do
+      it 'excludes qr_data_url and error from the response' do
+        allow(Current).to receive(:account_user).and_return(nil)
+
+        data = channel.provider_connection_data
+
+        expect(data).to eq({ connection: 'open' })
       end
     end
   end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_11_14_173609) do
+ActiveRecord::Schema[7.1].define(version: 2025_11_17_003944) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -277,7 +277,7 @@ ActiveRecord::Schema[7.1].define(version: 2025_11_14_173609) do
     t.jsonb "audience", default: []
     t.datetime "scheduled_at", precision: nil
     t.boolean "trigger_only_during_business_hours", default: false
-    t.jsonb "template_params"
+    t.jsonb "template_params", default: {}, null: false
     t.index ["account_id"], name: "index_campaigns_on_account_id"
     t.index ["campaign_status"], name: "index_campaigns_on_campaign_status"
     t.index ["campaign_type"], name: "index_campaigns_on_campaign_type"
@@ -567,7 +567,9 @@ ActiveRecord::Schema[7.1].define(version: 2025_11_14_173609) do
     t.datetime "updated_at", null: false
     t.jsonb "message_templates", default: {}
     t.datetime "message_templates_last_updated", precision: nil
+    t.jsonb "provider_connection", default: {}
     t.index ["phone_number"], name: "index_channel_whatsapp_on_phone_number", unique: true
+    t.index ["provider_connection"], name: "index_channel_whatsapp_provider_connection", where: "((provider)::text = ANY ((ARRAY['baileys'::character varying, 'zapi'::character varying])::text[]))", using: :gin
   end
 
   create_table "companies", force: :cascade do |t|
@@ -774,6 +776,7 @@ ActiveRecord::Schema[7.1].define(version: 2025_11_14_173609) do
     t.bigint "user_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "show_on_sidebar", default: false, null: false
     t.index ["account_id"], name: "index_dashboard_apps_on_account_id"
     t.index ["user_id"], name: "index_dashboard_apps_on_user_id"
   end

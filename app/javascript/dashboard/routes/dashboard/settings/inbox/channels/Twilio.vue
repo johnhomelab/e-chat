@@ -6,12 +6,14 @@ import { useAlert } from 'dashboard/composables';
 import { required } from '@vuelidate/validators';
 import router from '../../../../index';
 import NextButton from 'dashboard/components-next/button/Button.vue';
+import PromoBanner from 'dashboard/components-next/banner/PromoBanner.vue';
 import { isPhoneE164OrEmpty } from 'shared/helpers/Validators';
 import { parseAPIErrorResponse } from 'dashboard/store/utils/api';
 
 export default {
   components: {
     NextButton,
+    PromoBanner,
   },
   props: {
     type: {
@@ -41,6 +43,9 @@ export default {
     }),
     authTokeni18nKey() {
       return this.useAPIKey ? 'API_KEY_SECRET' : 'AUTH_TOKEN';
+    },
+    isWhatsApp() {
+      return this.type === 'whatsapp';
     },
   },
   validations() {
@@ -112,12 +117,33 @@ export default {
         useAlert(errorMessage);
       }
     },
+    switchToZapi() {
+      router.push({
+        name: this.$route.name,
+        params: this.$route.params,
+        query: { provider: 'zapi' },
+      });
+    },
   },
 };
 </script>
 
 <template>
   <form class="flex flex-wrap flex-col mx-0" @submit.prevent="createChannel()">
+    <div v-if="isWhatsApp" class="mb-6">
+      <PromoBanner
+        :title="$t('INBOX_MGMT.ADD.WHATSAPP.ZAPI_PROMO.SWITCH_BANNER.TITLE')"
+        :description="
+          $t('INBOX_MGMT.ADD.WHATSAPP.ZAPI_PROMO.SWITCH_BANNER.DESCRIPTION')
+        "
+        variant="info"
+        logo-src="/assets/images/dashboard/channels/z-api/z-api-dark-blue.png"
+        logo-alt="Z-API"
+        :cta-text="$t('INBOX_MGMT.ADD.WHATSAPP.ZAPI_PROMO.SWITCH_BANNER.CTA')"
+        @cta-click="switchToZapi"
+      />
+    </div>
+
     <div class="flex-shrink-0 flex-grow-0">
       <label :class="{ error: v$.channelName.$error }">
         {{ $t('INBOX_MGMT.ADD.TWILIO.CHANNEL_NAME.LABEL') }}

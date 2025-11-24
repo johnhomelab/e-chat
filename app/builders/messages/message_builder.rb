@@ -5,7 +5,7 @@ class Messages::MessageBuilder # rubocop:disable Metrics/ClassLength
 
   attr_reader :message
 
-  def initialize(user, conversation, params) # rubocop:disable Metrics/CyclomaticComplexity
+  def initialize(user, conversation, params) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
     @params = params
     @private = params[:private] || false
     @conversation = conversation
@@ -20,6 +20,7 @@ class Messages::MessageBuilder # rubocop:disable Metrics/ClassLength
     @in_reply_to = content_attributes&.dig(:in_reply_to)
     @is_reaction = content_attributes&.dig(:is_reaction)
     @items = content_attributes&.dig(:items)
+    @zapi_args = content_attributes&.dig(:zapi_args)
   end
 
   def perform
@@ -147,6 +148,10 @@ class Messages::MessageBuilder # rubocop:disable Metrics/ClassLength
     AgentBot.where(account_id: [nil, @conversation.account.id]).find_by(id: @params[:sender_id])
   end
 
+  def zapi_args
+    @zapi_args.present? ? { zapi_args: @zapi_args } : {}
+  end
+
   def message_params
     {
       account_id: @conversation.account_id,
@@ -161,7 +166,7 @@ class Messages::MessageBuilder # rubocop:disable Metrics/ClassLength
       is_reaction: @is_reaction,
       echo_id: @params[:echo_id],
       source_id: @params[:source_id]
-    }.merge(external_created_at).merge(automation_rule_id).merge(campaign_id).merge(template_params)
+    }.merge(external_created_at).merge(automation_rule_id).merge(campaign_id).merge(template_params).merge(zapi_args)
   end
 
   def email_inbox?

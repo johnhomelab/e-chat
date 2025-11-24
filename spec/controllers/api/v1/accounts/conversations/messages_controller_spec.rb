@@ -83,8 +83,7 @@ RSpec.describe 'Conversation Messages API', type: :request do
 
       it 'triggers typing off event for non-private messages' do
         params = { content: 'test-message', private: false }
-        allow(Rails.configuration.dispatcher).to receive(:dispatch)
-          .with('conversation.typing_off', kind_of(Time), hash_including(conversation: conversation, user: agent, is_private: false))
+        allow(Rails.configuration.dispatcher).to receive(:dispatch).and_call_original
 
         post api_v1_account_conversation_messages_url(account_id: account.id, conversation_id: conversation.display_id),
              params: params,
@@ -93,12 +92,12 @@ RSpec.describe 'Conversation Messages API', type: :request do
 
         expect(response).to have_http_status(:success)
         expect(Rails.configuration.dispatcher).to have_received(:dispatch)
+          .with('conversation.typing_off', kind_of(Time), hash_including(conversation: conversation, user: agent, is_private: false))
       end
 
       it 'triggers typing off event for private messages' do
         params = { content: 'test-message', private: true }
-        allow(Rails.configuration.dispatcher).to receive(:dispatch).with('conversation.typing_off', kind_of(Time),
-                                                                         hash_including(conversation: conversation, user: agent, is_private: true))
+        allow(Rails.configuration.dispatcher).to receive(:dispatch).and_call_original
 
         post api_v1_account_conversation_messages_url(account_id: account.id, conversation_id: conversation.display_id),
              params: params,
@@ -107,6 +106,7 @@ RSpec.describe 'Conversation Messages API', type: :request do
 
         expect(response).to have_http_status(:success)
         expect(Rails.configuration.dispatcher).to have_received(:dispatch)
+          .with('conversation.typing_off', kind_of(Time), hash_including(conversation: conversation, user: agent, is_private: true))
       end
 
       context 'when api inbox' do

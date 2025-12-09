@@ -24,6 +24,9 @@ class Whatsapp::Providers::WhatsappBaileysService < Whatsapp::Providers::BaseSer
     end
 
     response.parsed_response.deep_symbolize_keys
+  rescue StandardError => e
+    Rails.logger.error e.message
+    raise ProviderUnavailableError, 'Baileys API is unavailable'
   end
 
   def setup_channel_provider

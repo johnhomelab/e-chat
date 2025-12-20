@@ -355,4 +355,6 @@ Rails/SaveBang:
   AllowedReceivers:
     - Stripe::Subscription
     - Stripe::Customer
+    - Stripe::Invoice
+    - Stripe::InvoiceItem
     - FactoryBot

@@ -130,7 +130,6 @@ export default {
       showVariablesMenu: false,
       newConversationModalActive: false,
       showArticleSearchPopover: false,
-      hasRecordedAudio: false,
     };
   },
   computed: {
@@ -288,6 +287,9 @@ export default {
     },
     hasAttachments() {
       return this.attachedFiles.length;
+    },
+    hasRecordedAudio() {
+      return this.attachedFiles.some(file => file.isRecordedAudio);
     },
     showAudioRecorder() {
       return !this.isOnPrivateNote && this.showFileUpload;
@@ -466,11 +468,7 @@ export default {
     },
     message(updatedMessage) {
       // Check if the message starts with a slash.
-      const bodyWithoutSignature = removeSignature(
-        updatedMessage,
-        this.signatureToApply
-      );
-      const startsWithSlash = bodyWithoutSignature.startsWith('/');
+      const startsWithSlash = updatedMessage.startsWith('/');
 
       // Determine if the user is potentially typing a slash command.
       // This is true if the message starts with a slash and the rich content editor is not active.
@@ -480,7 +478,7 @@ export default {
       // If a slash command is active, extract the command text after the slash.
       // If not, reset the mentionSearchKey.
       this.mentionSearchKey = this.hasSlashCommand
-        ? bodyWithoutSignature.substring(1)
+        ? updatedMessage.substring(1)
         : '';
 
       // Autosave the current message draft.
@@ -605,9 +603,7 @@ export default {
         const key = `draft-${this.conversationIdByRoute}-${this.replyType}`;
         const messageFromStore =
           this.$store.getters['draftMessages/get'](key) || '';
-
-        // ensure that the message has signature set based on the ui setting
-        this.message = this.toggleSignatureForDraft(messageFromStore);
+        this.message = messageFromStore;
       }
     },
     toggleSignatureForDraft(message) {
@@ -828,25 +824,6 @@ export default {
       this.hideContentTemplatesModal();
     },
     replaceText(message) {
-      if (this.sendWithSignature && !this.private) {
-        // if signature is enabled, append it to the message
-        // appendSignature ensures that the signature is not duplicated
-        // so we don't need to check if the signature is already present
-        if (this.showRichContentEditor) {
-          const effectiveChannelType = getEffectiveChannelType(
-            this.channelType,
-            this.inbox?.medium || ''
-          );
-          message = appendSignature(
-            message,
-            this.messageSignature,
-            effectiveChannelType
-          );
-        } else {
-          message = appendSignature(message, this.signatureToApply);
-        }
-      }
-
       const updatedMessage = replaceVariablesInMessage({
         message,
         variables: this.messageVariables,
@@ -899,22 +876,6 @@ export default {
     },
     clearMessage() {
       this.message = '';
-      if (this.sendWithSignature && !this.isPrivate) {
-        // if signature is enabled, append it to the message
-        if (this.showRichContentEditor) {
-          const effectiveChannelType = getEffectiveChannelType(
-            this.channelType,
-            this.inbox?.medium || ''
-          );
-          this.message = appendSignature(
-            this.message,
-            this.messageSignature,
-            effectiveChannelType
-          );
-        } else {
-          this.message = appendSignature(this.message, this.signatureToApply);
-        }
-      }
       this.attachedFiles = [];
       this.isRecordingAudio = false;
       this.resetReplyToMessage();
@@ -933,6 +894,9 @@ export default {
       this.isRecordingAudio = !this.isRecordingAudio;
       if (!this.isRecordingAudio) {
         this.resetAudioRecorderInput();
+        this.onTypingOff();
+      } else {
+        this.onRecording();
       }
     },
     toggleAudioRecorderPlayPause() {
@@ -940,6 +904,7 @@ export default {
       if (!this.recordingAudioState) {
         this.$refs.audioRecorderInput.stopRecording();
       } else {
+        this.onTypingOff();
         this.$refs.audioRecorderInput.playPause();
       }
     },
@@ -953,6 +918,9 @@ export default {
     },
     onTypingOn() {
       this.toggleTyping('on');
+    },
+    onRecording() {
+      this.toggleTyping('recording');
     },
     onTypingOff() {
       this.toggleTyping('off');
@@ -969,7 +937,9 @@ export default {
     },
     onFinishRecorder(file) {
       this.recordingAudioState = 'stopped';
-      this.hasRecordedAudio = true;
+
+      this.removeRecordedAudio();
+
       // Added a new key isRecordedAudio to the file to find it's and recorded audio
       // Because to filter and show only non recorded audio and other attachments
       const autoRecordedFile = {
@@ -993,6 +963,10 @@ export default {
       });
     },
     attachFile({ blob, file }) {
+      if (file?.isRecordedAudio) {
+        this.removeRecordedAudio();
+      }
+
       const reader = new FileReader();
       reader.readAsDataURL(file.file);
       reader.onloadend = () => {
@@ -1069,11 +1043,24 @@ export default {
       return multipleMessagePayload;
     },
     getMessagePayload(message) {
-      const messageWithQuote = this.getMessageWithQuotedEmailText(message);
+      let finalMessage = this.getMessageWithQuotedEmailText(message);
+      if (this.sendWithSignature && !this.isPrivate && this.messageSignature) {
+        const { signature_position, signature_separator } =
+          this.currentUser?.ui_settings || {};
+        const signatureSettings = {
+          position: signature_position || 'top',
+          separator: signature_separator || 'blank',
+        };
+        finalMessage = appendSignature(
+          message,
+          this.messageSignature,
+          signatureSettings
+        );
+      }
 
       let messagePayload = {
         conversationId: this.currentChat.id,
-        message: messageWithQuote,
+        message: finalMessage,
         private: this.isPrivate,
         sender: this.sender,
       };
@@ -1081,11 +1068,17 @@ export default {
 
       if (this.attachedFiles && this.attachedFiles.length) {
         messagePayload.files = [];
+        messagePayload.isRecordedAudio = [];
         this.attachedFiles.forEach(attachment => {
           if (this.globalConfig.directUploadsEnabled) {
             messagePayload.files.push(attachment.blobSignedId);
           } else {
             messagePayload.files.push(attachment.resource.file);
+            if (attachment.isRecordedAudio) {
+              messagePayload.isRecordedAudio.push(
+                attachment.resource.file.name
+              );
+            }
           }
         });
       }
@@ -1160,8 +1153,10 @@ export default {
       this.recordingAudioDurationText = '00:00';
       this.isRecordingAudio = false;
       this.recordingAudioState = '';
-      this.hasRecordedAudio = false;
       // Only clear the recorded audio when we click toggle button.
+      this.removeRecordedAudio();
+    },
+    removeRecordedAudio() {
       this.attachedFiles = this.attachedFiles.filter(
         file => !file?.isRecordedAudio
       );
@@ -1234,9 +1229,6 @@ export default {
         class="rounded-none input"
         :placeholder="messagePlaceHolder"
         :min-height="4"
-        :signature="signatureToApply"
-        allow-signature
-        :send-with-signature="sendWithSignature"
         @typing-off="onTypingOff"
         @typing-on="onTypingOn"
         @focus="onFocus"
@@ -1253,8 +1245,6 @@ export default {
         :min-height="4"
         enable-variables
         :variables="messageVariables"
-        :signature="messageSignature"
-        allow-signature
         :channel-type="channelType"
         :medium="inbox.medium"
         @typing-off="onTypingOff"

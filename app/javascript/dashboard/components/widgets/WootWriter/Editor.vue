@@ -23,6 +23,7 @@ import { useKeyboardEvents } from 'dashboard/composables/useKeyboardEvents';
 import { useTrack } from 'dashboard/composables';
 import { useUISettings } from 'dashboard/composables/useUISettings';
 import { useAlert } from 'dashboard/composables';
+import { useMapGetter } from 'dashboard/composables/store';
 
 import { BUS_EVENTS } from 'shared/constants/busEvents';
 import { CONVERSATION_EVENTS } from 'dashboard/helper/AnalyticsHelper/events';
@@ -44,11 +45,10 @@ import {
 } from '@chatwoot/prosemirror-schema/src/mentions/plugin';
 
 import {
-  appendSignature,
   findNodeToInsertImage,
   getContentNode,
+  cleanSignature,
   insertAtCursor,
-  removeSignature as removeSignatureHelper,
   scrollCursorIntoView,
   setURLWithQueryAndSize,
   getFormattingForEditor,
@@ -145,6 +145,8 @@ const createState = (content, placeholder, plugins = [], methods = {}) => {
 
 const { isEditorHotKeyEnabled, fetchSignatureFlagFromUISettings } =
   useUISettings();
+
+const currentUser = useMapGetter('getCurrentUser');
 
 const typingIndicator = createTypingIndicator(
   () => emit('typingOn'),
@@ -296,8 +298,27 @@ watch(showToolsMenu, updatedValue => {
 function focusEditorInputField(pos = 'end') {
   const { tr } = editorView.state;
 
-  const selection =
-    pos === 'end' ? Selection.atEnd(tr.doc) : Selection.atStart(tr.doc);
+  // Check if signature is at start and adjust cursor position accordingly
+  const signaturePosition =
+    currentUser.value?.ui_settings?.signature_position || 'top';
+  const hasSignature = sendWithSignature.value && props.signature;
+
+  let selection;
+  if (pos === 'end' || !hasSignature || signaturePosition !== 'top') {
+    selection =
+      pos === 'end' ? Selection.atEnd(tr.doc) : Selection.atStart(tr.doc);
+  } else {
+    // Position cursor after signature when signature is at start
+    const signatureLength = props.signature
+      ? cleanSignature(props.signature).length
+      : 0;
+    const separatorLength =
+      currentUser.value?.ui_settings?.signature_separator === '--' ? 6 : 2; // "\n--\n" vs "\n\n"
+    const cursorPos = signatureLength + separatorLength;
+    selection = Selection.near(
+      tr.doc.resolve(Math.min(cursorPos, tr.doc.content.size))
+    );
+  }
 
   editorView.dispatch(tr.setSelection(selection));
   editorView.focus();
@@ -307,19 +328,8 @@ function isBodyEmpty(content) {
   // if content is undefined, we assume that the body is empty
   if (!content) return true;
 
-  // if the signature is present, we need to remove it before checking
-  // note that we don't update the editorView, so this is safe
-  // Use effective channel type to match how signature was appended
-  const bodyWithoutSignature = props.signature
-    ? removeSignatureHelper(
-        content,
-        props.signature,
-        effectiveChannelType.value
-      )
-    : content;
-
   // trimming should remove all the whitespaces, so we can check the length
-  return bodyWithoutSignature.trim().length === 0;
+  return content.trim().length === 0;
 }
 
 function handleEmptyBodyWithSignature() {
@@ -376,47 +386,6 @@ function reloadState(content = props.modelValue) {
 
   editorView.updateState(state);
   focusEditor(unrefContent);
-}
-
-function addSignature() {
-  let content = props.modelValue;
-  // see if the content is empty, if it is before appending the signature
-  // we need to add a paragraph node and move the cursor at the start of the editor
-  const contentWasEmpty = isBodyEmpty(content);
-  content = appendSignature(
-    content,
-    props.signature,
-    effectiveChannelType.value
-  );
-  // need to reload first, ensuring that the editorView is updated
-  reloadState(content);
-
-  if (contentWasEmpty) {
-    handleEmptyBodyWithSignature();
-  }
-}
-
-function removeSignature() {
-  if (!props.signature) return;
-  let content = props.modelValue;
-  content = removeSignatureHelper(
-    content,
-    props.signature,
-    effectiveChannelType.value
-  );
-  // reload the state, ensuring that the editorView is updated
-  reloadState(content);
-}
-
-function toggleSignatureInEditor(signatureEnabled) {
-  // The toggleSignatureInEditor gets the new value from the
-  // watcher, this means that if the value is true, the signature
-  // is supposed to be added, else we remove it.
-  if (signatureEnabled) {
-    addSignature();
-  } else {
-    removeSignature();
-  }
 }
 
 function setToolbarPosition() {
@@ -664,7 +633,11 @@ function createEditorView() {
     handleDOMEvents: {
       keyup: () => {
         if (!props.disabled) {
-          typingIndicator.start();
+          if (props.modelValue.length) {
+            typingIndicator.start();
+          } else {
+            typingIndicator.stop();
+          }
           updateImgToolbarOnDelete();
         }
       },
@@ -733,13 +706,6 @@ watch(
     }
   }
 );
-
-watch(sendWithSignature, newValue => {
-  // see if the allowSignature flag is true
-  if (props.allowSignature) {
-    toggleSignatureInEditor(newValue);
-  }
-});
 
 onMounted(() => {
   // [VITE] state assignment was done in created before

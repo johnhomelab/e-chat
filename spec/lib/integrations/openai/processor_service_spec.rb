@@ -183,7 +183,7 @@ RSpec.describe Integrations::Openai::ProcessorService do
 
       context 'with CAPTAIN_OPEN_AI_ENDPOINT configured' do
         before do
-          InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_ENDPOINT')&.destroy
+          InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_ENDPOINT')&.destroy!
           create(:installation_config, name: 'CAPTAIN_OPEN_AI_ENDPOINT', value: 'https://custom.azure.com/')
         end
 

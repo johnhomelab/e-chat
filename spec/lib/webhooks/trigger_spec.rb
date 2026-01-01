@@ -174,4 +174,38 @@ describe Webhooks::Trigger do
       trigger.execute(url, payload, webhook_type)
     end
   end
+
+  context 'when webhook returns 404' do
+    it 'raises CustomExceptions::Webhook::RetriableError' do
+      payload = { hello: :hello }
+
+      expect(RestClient::Request).to receive(:execute)
+        .with(
+          method: :post,
+          url: url,
+          payload: payload.to_json,
+          headers: { content_type: :json, accept: :json },
+          timeout: webhook_timeout
+        ).and_raise(RestClient::NotFound.new)
+
+      expect { trigger.execute(url, payload, webhook_type) }.to raise_error(CustomExceptions::Webhook::RetriableError)
+    end
+
+    it 'does not call handle_error for 404 responses' do
+      payload = { event: 'message_created', conversation: { id: conversation.id }, id: message.id }
+
+      expect(RestClient::Request).to receive(:execute)
+        .with(
+          method: :post,
+          url: url,
+          payload: payload.to_json,
+          headers: { content_type: :json, accept: :json },
+          timeout: webhook_timeout
+        ).and_raise(RestClient::NotFound.new)
+
+      expect(Messages::StatusUpdateService).not_to receive(:new)
+      expect { trigger.execute(url, payload, webhook_type) }.to raise_error(CustomExceptions::Webhook::RetriableError)
+      expect(message.reload.status).to eq('sent')
+    end
+  end
 end

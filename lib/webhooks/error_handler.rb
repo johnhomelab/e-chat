@@ -1,5 +1,5 @@
 class Webhooks::ErrorHandler
-  SUPPORTED_EVENTS = %w[message_created message_updated].freeze
+  SUPPORTED_EVENTS = %w[message_created message_incoming message_outgoing message_updated].freeze
 
   def initialize(payload, webhook_type, error)
     @payload = payload

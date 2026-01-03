@@ -11,12 +11,9 @@ class Webhooks::Trigger
 
   def execute
     perform_request
-  rescue RestClient::NotFound
-    Rails.logger.warn "Webhook returned 404: #{@url}"
-    raise CustomExceptions::Webhook::RetriableError, "Webhook endpoint not found: #{@url}"
   rescue StandardError => e
-    Webhooks::ErrorHandler.perform(@payload, @webhook_type, e)
-    Rails.logger.warn "Exception: Invalid webhook URL #{@url} : #{e.message}"
+    Rails.logger.warn "Webhook request failed for #{@url}: #{e.message}"
+    raise CustomExceptions::Webhook::RetriableError, "Webhook request failed: #{e.message}"
   end
 
   private

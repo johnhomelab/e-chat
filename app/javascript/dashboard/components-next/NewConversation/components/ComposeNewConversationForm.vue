@@ -128,6 +128,8 @@ const newMessagePayload = () => {
     currentUser: props.currentUser,
     attachedFiles,
     directUploadsEnabled: props.isDirectUploadsEnabled,
+    sendWithSignature: props.sendWithSignature,
+    messageSignature: props.messageSignature,
   });
 };
 

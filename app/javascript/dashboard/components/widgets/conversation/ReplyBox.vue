@@ -1162,21 +1162,6 @@ export default {
         @play="recordingAudioState = 'playing'"
         @pause="recordingAudioState = 'paused'"
       />
-      <div
-        v-if="shouldShowSignaturePreview && signaturePosition === 'top'"
-        class="signature-preview px-2 py-1 text-slate-500 dark:text-slate-400 text-sm opacity-70 select-none border-b border-slate-100 dark:border-slate-700"
-      >
-        <div class="text-xs text-slate-400 dark:text-slate-500 mb-1">
-          {{ $t('CONVERSATION.FOOTER.SIGNATURE_LABEL_TOP') }}
-        </div>
-        <div v-dompurify-html="formattedSignature" />
-        <div
-          v-if="signatureSeparator === '--'"
-          class="text-slate-400 dark:text-slate-500 mt-1"
-        >
-          {{ signatureSeparator }}
-        </div>
-      </div>
       <WootMessageEditor
         v-model="message"
         :editor-id="editorStateId"
@@ -1200,21 +1185,6 @@ export default {
         @toggle-variables-menu="toggleVariablesMenu"
         @clear-selection="clearEditorSelection"
       />
-      <div
-        v-if="shouldShowSignaturePreview && signaturePosition === 'bottom'"
-        class="signature-preview px-2 py-1 mt-2 text-slate-500 dark:text-slate-400 text-sm opacity-70 select-none border-t border-slate-100 dark:border-slate-700"
-      >
-        <div class="text-xs text-slate-400 dark:text-slate-500 mb-1">
-          {{ $t('CONVERSATION.FOOTER.SIGNATURE_LABEL_BOTTOM') }}
-        </div>
-        <div
-          v-if="signatureSeparator === '--'"
-          class="text-slate-400 dark:text-slate-500 mb-1"
-        >
-          {{ signatureSeparator }}
-        </div>
-        <div v-dompurify-html="formattedSignature" />
-      </div>
       <QuotedEmailPreview
         v-if="shouldShowQuotedPreview"
         :quoted-email-text="quotedEmailText"

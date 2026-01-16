@@ -80,7 +80,7 @@ RSpec.describe 'Contacts API', type: :request do
         expect(contact_emails).to include(contact.email)
         first_inbox = contact_inboxes[0]['inbox']
         expect(first_inbox).to be_a(Hash)
-        expect(first_inbox).to include('id', 'channel_id', 'channel_type', 'name', 'avatar_url', 'provider')
+        expect(first_inbox).to include('id', 'channel_id', 'channel_type', 'account_id', 'name', 'avatar_url', 'provider')
 
         expect(first_inbox).not_to include('imap_login',
                                            'imap_password',
@@ -358,7 +358,7 @@ RSpec.describe 'Contacts API', type: :request do
       end
 
       it 'searches contacts using company name' do
-        contact2.update(additional_attributes: { company_name: 'acme.inc' })
+        contact2.update!(additional_attributes: { company_name: 'acme.inc' })
         get "/api/v1/accounts/#{account.id}/contacts/search",
             params: { q: 'acme.inc' },
             headers: admin.create_new_auth_token,
@@ -662,7 +662,7 @@ RSpec.describe 'Contacts API', type: :request do
       end
 
       it 'allows unblocking of contact' do
-        contact.update(blocked: true)
+        contact.update!(blocked: true)
         patch "/api/v1/accounts/#{account.id}/contacts/#{contact.id}",
               params: { blocked: false },
               headers: admin.create_new_auth_token,

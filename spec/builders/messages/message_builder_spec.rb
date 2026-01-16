@@ -134,6 +134,58 @@ describe Messages::MessageBuilder do
         expect(message.attachments.first.file_type).to eq 'image'
       end
 
+      it 'creates attachment with is_recorded_audio metadata' do
+        params[:is_recorded_audio] = true
+
+        message = message_builder
+
+        expect(message.attachments.first.meta).to eq({ 'is_recorded_audio' => true })
+      end
+
+      it 'creates attachment with is_recorded_audio metadata when param is array of filenames' do
+        params[:is_recorded_audio] = ['avatar.png']
+
+        message = message_builder
+
+        expect(message.attachments.first.meta).to eq({ 'is_recorded_audio' => true })
+      end
+
+      it 'creates attachment with is_recorded_audio metadata when param is string with array' do
+        params[:is_recorded_audio] = '["avatar.png"]'
+
+        message = message_builder
+
+        expect(message.attachments.first.meta).to eq({ 'is_recorded_audio' => true })
+      end
+
+      it 'creates attachment with custom metadata from attachments_metadata param' do
+        params[:attachments_metadata] = { 'avatar.png' => { description: 'Profile picture', source: 'upload' } }
+
+        message = message_builder
+
+        expect(message.attachments.first.meta).to include('description' => 'Profile picture', 'source' => 'upload')
+      end
+
+      it 'does not apply metadata when filename key does not match' do
+        params[:attachments_metadata] = { 'other_file.png' => { description: 'Wrong file' } }
+
+        message = message_builder
+
+        expect(message.attachments.first.meta).to be_nil
+      end
+
+      it 'merges is_recorded_audio with attachments_metadata' do
+        params[:is_recorded_audio] = true
+        params[:attachments_metadata] = { 'avatar.png' => { description: 'Audio note' } }
+
+        message = message_builder
+
+        expect(message.attachments.first.meta).to eq({
+                                                       'is_recorded_audio' => true,
+                                                       'description' => 'Audio note'
+                                                     })
+      end
+
       context 'when DIRECT_UPLOAD_ENABLED' do
         let(:params) do
           ActionController::Parameters.new({

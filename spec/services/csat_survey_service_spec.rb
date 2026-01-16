@@ -48,7 +48,7 @@ describe CsatSurveyService do
 
     context 'when CSAT survey should not be sent' do
       it 'does nothing when conversation is not resolved' do
-        conversation.update(status: :open)
+        conversation.update!(status: :open)
 
         service.perform
 
@@ -57,7 +57,7 @@ describe CsatSurveyService do
       end
 
       it 'does nothing when CSAT survey is not enabled' do
-        inbox.update(csat_survey_enabled: false)
+        inbox.update!(csat_survey_enabled: false)
 
         service.perform
 
@@ -91,13 +91,13 @@ describe CsatSurveyService do
 
       context 'when survey rules block sending' do
         before do
-          inbox.update(csat_config: {
-                         'survey_rules' => {
-                           'operator' => 'does_not_contain',
-                           'values' => ['bot-detectado']
-                         }
-                       })
-          conversation.update(label_list: ['bot-detectado'])
+          inbox.update!(csat_config: {
+                          'survey_rules' => {
+                            'operator' => 'does_not_contain',
+                            'values' => ['bot-detectado']
+                          }
+                        })
+          conversation.update!(label_list: ['bot-detectado'])
         end
 
         it 'does not send CSAT' do
@@ -171,7 +171,7 @@ describe CsatSurveyService do
 
         it 'builds correct template info with default template name' do
           expected_template_name = "customer_satisfaction_survey_#{whatsapp_inbox.id}"
-          whatsapp_inbox.update(csat_config: { 'template' => {}, 'message' => 'Rate us' })
+          whatsapp_inbox.update!(csat_config: { 'template' => {}, 'message' => 'Rate us' })
           allow(mock_provider_service).to receive(:get_template_status)
             .with(expected_template_name)
             .and_return({ success: true, template: { status: 'APPROVED' } })
@@ -328,15 +328,15 @@ describe CsatSurveyService do
 
       context 'when survey rules block sending' do
         before do
-          whatsapp_inbox.update(csat_config: {
-                                  'template' => { 'name' => 'customer_survey_template', 'language' => 'en' },
-                                  'message' => 'Please rate your experience',
-                                  'survey_rules' => {
-                                    'operator' => 'does_not_contain',
-                                    'values' => ['bot-detectado']
-                                  }
-                                })
-          whatsapp_conversation.update(label_list: ['bot-detectado'])
+          whatsapp_inbox.update!(csat_config: {
+                                   'template' => { 'name' => 'customer_survey_template', 'language' => 'en' },
+                                   'message' => 'Please rate your experience',
+                                   'survey_rules' => {
+                                     'operator' => 'does_not_contain',
+                                     'values' => ['bot-detectado']
+                                   }
+                                 })
+          whatsapp_conversation.update!(label_list: ['bot-detectado'])
         end
 
         it 'does not call WhatsApp template or create a CSAT message' do
@@ -361,16 +361,16 @@ describe CsatSurveyService do
       },
       'message' => 'Please rate your experience'
     }
-    whatsapp_inbox.update(csat_config: template_config)
+    whatsapp_inbox.update!(csat_config: template_config)
     allow(mock_provider_service).to receive(:get_template_status)
       .with(template_name)
       .and_return({ success: true, template: { status: 'APPROVED' } })
   end
 
   def setup_template_with_status(template_name, status)
-    whatsapp_inbox.update(csat_config: {
-                            'template' => { 'name' => template_name }
-                          })
+    whatsapp_inbox.update!(csat_config: {
+                             'template' => { 'name' => template_name }
+                           })
     allow(mock_provider_service).to receive(:get_template_status)
       .with(template_name)
       .and_return({ success: true, template: { status: status } })

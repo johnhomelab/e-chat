@@ -10,7 +10,7 @@ class Email::SendOnEmailService < Base::SendOnChannelService
 
     reply_mail = ConversationReplyMailer.with(account: message.account).email_reply(message).deliver_now
     Rails.logger.info("Email message #{message.id} sent with source_id: #{reply_mail.message_id}")
-    message.update(source_id: reply_mail.message_id)
+    message.update!(source_id: reply_mail.message_id)
   rescue StandardError => e
     ChatwootExceptionTracker.new(e, account: message.account).capture_exception
     Messages::StatusUpdateService.new(message, 'failed', e.message).perform

@@ -26,9 +26,10 @@ class Whatsapp::IncomingMessageBaseService
     # Multiple webhook event can be received against the same message due to misconfigurations in the Meta
     # business manager account. While we have not found the core reason yet, the following line ensure that
     # there are no duplicate messages created.
-    return if find_message_by_source_id(@processed_params[:messages].first[:id]) || message_under_process?
+    return if find_message_by_source_id(@processed_params[:messages].first[:id])
 
-    cache_message_source_id_in_redis
+    return unless acquire_message_processing_lock
+
     set_contact
     return unless @contact
 
@@ -128,7 +129,8 @@ class Whatsapp::IncomingMessageBaseService
         io: attachment_file,
         filename: attachment_file.original_filename,
         content_type: attachment_file.content_type
-      }
+      },
+      meta: ({ is_recorded_audio: true } if attachment_payload[:voice])
     )
   end
 
@@ -153,7 +155,8 @@ class Whatsapp::IncomingMessageBaseService
       message_type: :incoming,
       sender: @contact,
       source_id: message[:id].to_s,
-      in_reply_to_external_id: @in_reply_to_external_id
+      in_reply_to_external_id: @in_reply_to_external_id,
+      external_created_at: message[:timestamp].to_i
     )
   end
 

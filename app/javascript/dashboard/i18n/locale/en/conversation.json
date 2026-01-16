@@ -58,7 +58,8 @@
     },
     "UPLOADING_ATTACHMENTS": "Uploading attachments...",
     "REPLIED_TO_STORY": "Replied to your story",
-    "UNSUPPORTED_MESSAGE": "This message is unsupported. To view it, please open it on the original platform.",
+    "UNSUPPORTED_MESSAGE": "This message is unsupported. You can view this message on the app.",
+    "UNSUPPORTED_MESSAGE_WHATSAPP": "This message is unsupported. You can view this message on the WhatsApp app.",
     "UNSUPPORTED_MESSAGE_FACEBOOK": "This message is unsupported. You can view this message on the Facebook Messenger app.",
     "UNSUPPORTED_MESSAGE_INSTAGRAM": "This message is unsupported. You can view this message on the Instagram app.",
     "SUCCESS_DELETE_MESSAGE": "Message deleted successfully",
@@ -183,6 +184,8 @@
       "MESSAGE_SIGN_TOOLTIP": "Message signature",
       "ENABLE_SIGN_TOOLTIP": "Enable signature",
       "DISABLE_SIGN_TOOLTIP": "Disable signature",
+      "SIGNATURE_LABEL_TOP": "↓ Signature",
+      "SIGNATURE_LABEL_BOTTOM": "↑ Signature",
       "MSG_INPUT": "Shift + enter for new line. Start with '/' to select a Canned Response.",
       "PRIVATE_MSG_INPUT": "Shift + enter for new line. This will be visible only to Agents",
       "MESSAGE_SIGNATURE_NOT_CONFIGURED": "Message signature is not configured, please configure it in profile settings.",
@@ -286,6 +289,14 @@
       "REJECT_CALL": "Reject",
       "JOIN_CALL": "Join call",
       "END_CALL": "End call"
+    },
+    "INBOX": {
+      "WHATSAPP_PROVIDER_CONNECTION": {
+        "NOT_CONNECTED": "WhatsApp is not connected. Please link your device again.",
+        "NOT_CONNECTED_CONTACT_ADMIN": "WhatsApp is not connected. Click this button to try to reconnect, or please contact your administrator to link your device again.",
+        "LINK_DEVICE": "Link device",
+        "RECONNECT_FAILED": "Failed to reconnect. Please contact your administrator to link your device again."
+      }
     }
   },
   "EMAIL_TRANSCRIPT": {

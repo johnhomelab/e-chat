@@ -18,7 +18,7 @@ describe Whatsapp::IncomingMessageBaileysService do
 
         expect do
           described_class.new(inbox: inbox, params: params).perform
-        end.to raise_error(Whatsapp::IncomingMessageBaileysService::InvalidWebhookVerifyToken)
+        end.to(raise_error { |error| expect(error.class.name).to eq('Whatsapp::IncomingMessageBaileysService::InvalidWebhookVerifyToken') })
       end
     end
 
@@ -918,7 +918,7 @@ describe Whatsapp::IncomingMessageBaileysService do
 
           expect do
             described_class.new(inbox: inbox, params: params).perform
-          end.to raise_error(Whatsapp::IncomingMessageBaileysService::MessageNotFoundError)
+          end.to(raise_error { |error| expect(error.class.name).to eq('Whatsapp::BaileysHandlers::MessagesUpdate::MessageNotFoundError') })
         end
       end
 

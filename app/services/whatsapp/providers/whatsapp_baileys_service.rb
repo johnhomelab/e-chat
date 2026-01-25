@@ -262,6 +262,28 @@ class Whatsapp::Providers::WhatsappBaileysService < Whatsapp::Providers::BaseSer
     true
   end
 
+  def edit_message(recipient_id, message, new_content)
+    @recipient_id = recipient_id
+
+    response = HTTParty.patch(
+      "#{provider_url}/connections/#{whatsapp_channel.phone_number}/messages",
+      headers: api_headers,
+      body: {
+        jid: remote_jid,
+        key: {
+          id: message.source_id,
+          remoteJid: remote_jid,
+          fromMe: message.message_type == 'outgoing'
+        },
+        messageContent: { text: new_content }
+      }.to_json
+    )
+
+    raise ProviderUnavailableError unless process_response(response)
+
+    true
+  end
+
   private
 
   def provider_url
@@ -384,5 +406,6 @@ class Whatsapp::Providers::WhatsappBaileysService < Whatsapp::Providers::BaseSer
                       :unread_message,
                       :received_messages,
                       :on_whatsapp,
-                      :delete_message
+                      :delete_message,
+                      :edit_message
 end

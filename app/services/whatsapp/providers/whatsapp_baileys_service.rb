@@ -67,9 +67,9 @@ class Whatsapp::Providers::WhatsappBaileysService < Whatsapp::Providers::BaseSer
     if @message.content_attributes[:is_reaction]
       @message_content = reaction_message_content
     elsif @message.attachments.present?
-      @message_content = attachment_message_content
+      @message_content = attachment_message_content.merge(reply_context)
     elsif @message.outgoing_content.present?
-      @message_content = { text: @message.outgoing_content }
+      @message_content = { text: @message.outgoing_content }.merge(reply_context)
     else
       @message.update!(is_unsupported: true)
       return
@@ -302,6 +302,45 @@ class Whatsapp::Providers::WhatsappBaileysService < Whatsapp::Providers::BaseSer
                       fromMe: reply_to.message_type == 'outgoing' },
                text: @message.outgoing_content }
     }
+  end
+
+  def reply_context
+    reply_to_external_id = @message.content_attributes[:in_reply_to_external_id]
+    return {} if reply_to_external_id.blank?
+
+    reply_to_message = @message.conversation.messages.find_by(source_id: reply_to_external_id)
+    return {} unless reply_to_message
+
+    {
+      quotedMessage: {
+        key: {
+          id: reply_to_external_id,
+          remoteJid: remote_jid,
+          fromMe: reply_to_message.message_type == 'outgoing'
+        },
+        message: quoted_message_content(reply_to_message)
+      }
+    }
+  end
+
+  def quoted_message_content(message)
+    if message.attachments.present?
+      attachment = message.attachments.first
+      case attachment.file_type
+      when 'image'
+        { imageMessage: { caption: message.content } }
+      when 'video'
+        { videoMessage: { caption: message.content } }
+      when 'audio'
+        { audioMessage: {} }
+      when 'file'
+        { documentMessage: { caption: message.content, fileName: attachment.file.filename.to_s } }
+      else
+        { conversation: message.content.to_s }
+      end
+    else
+      { conversation: message.content.to_s }
+    end
   end
 
   def attachment_message_content # rubocop:disable Metrics/MethodLength

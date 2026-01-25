@@ -804,6 +804,75 @@ describe Whatsapp::Providers::WhatsappBaileysService do
     end
   end
 
+  describe '#delete_message' do
+    let(:request_path) { "#{whatsapp_channel.provider_config['provider_url']}/connections/#{whatsapp_channel.phone_number}/messages" }
+    let(:outgoing_message) { create(:message, inbox: whatsapp_channel.inbox, source_id: 'msg_456', message_type: :outgoing) }
+    let(:incoming_message) { create(:message, inbox: whatsapp_channel.inbox, source_id: 'msg_789', message_type: :incoming) }
+
+    context 'when deleting an outgoing message' do
+      it 'sends delete request with fromMe true' do
+        stub_request(:delete, request_path)
+          .with(
+            headers: stub_headers(whatsapp_channel),
+            body: {
+              jid: test_send_jid,
+              key: {
+                id: outgoing_message.source_id,
+                remoteJid: test_send_jid,
+                fromMe: true
+              }
+            }.to_json
+          )
+          .to_return(status: 200, body: '{}')
+
+        result = service.delete_message(test_send_phone_number, outgoing_message)
+
+        expect(result).to be(true)
+      end
+    end
+
+    context 'when deleting an incoming message' do
+      it 'sends delete request with fromMe false' do
+        stub_request(:delete, request_path)
+          .with(
+            headers: stub_headers(whatsapp_channel),
+            body: {
+              jid: test_send_jid,
+              key: {
+                id: incoming_message.source_id,
+                remoteJid: test_send_jid,
+                fromMe: false
+              }
+            }.to_json
+          )
+          .to_return(status: 200, body: '{}')
+
+        result = service.delete_message(test_send_phone_number, incoming_message)
+
+        expect(result).to be(true)
+      end
+    end
+
+    context 'when response is unsuccessful' do
+      it 'raises ProviderUnavailableError and logs the error' do
+        stub_request(:delete, request_path)
+          .with(headers: stub_headers(whatsapp_channel))
+          .to_return(status: 400, body: 'error message')
+
+        stub_request(:post, "#{whatsapp_channel.provider_config['provider_url']}/connections/#{whatsapp_channel.phone_number}")
+          .to_return(status: 200)
+
+        allow(Rails.logger).to receive(:error)
+
+        expect do
+          service.delete_message(test_send_phone_number, outgoing_message)
+        end.to raise_error(Whatsapp::Providers::WhatsappBaileysService::ProviderUnavailableError)
+
+        expect(Rails.logger).to have_received(:error).with('error message')
+      end
+    end
+  end
+
   context 'when environment variable BAILEYS_PROVIDER_DEFAULT_URL is set' do
     it 'uses the base url from the environment variable' do
       stub_const('Whatsapp::Providers::WhatsappBaileysService::DEFAULT_URL', 'http://test.com')

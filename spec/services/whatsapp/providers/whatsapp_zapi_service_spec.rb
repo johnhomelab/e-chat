@@ -288,6 +288,60 @@ describe Whatsapp::Providers::WhatsappZapiService do
     end
   end
 
+  describe '#delete_message' do
+    let(:outgoing_message) { create(:message, inbox: whatsapp_channel.inbox, source_id: 'msg_456', message_type: :outgoing) }
+    let(:incoming_message) { create(:message, inbox: whatsapp_channel.inbox, source_id: 'msg_789', message_type: :incoming) }
+
+    context 'when deleting an outgoing message' do
+      it 'sends delete request with owner true' do
+        stub_request(:delete, "#{api_instance_path_with_token}/messages")
+          .with(
+            headers: stub_headers,
+            query: { messageId: outgoing_message.source_id, phone: test_send_phone_number, owner: 'true' }
+          )
+          .to_return(status: 204, body: '{}')
+
+        result = service.delete_message("+#{test_send_phone_number}", outgoing_message)
+
+        expect(result).to be(true)
+      end
+    end
+
+    context 'when deleting an incoming message' do
+      it 'sends delete request with owner false' do
+        stub_request(:delete, "#{api_instance_path_with_token}/messages")
+          .with(
+            headers: stub_headers,
+            query: { messageId: incoming_message.source_id, phone: test_send_phone_number, owner: 'false' }
+          )
+          .to_return(status: 204, body: '{}')
+
+        result = service.delete_message("+#{test_send_phone_number}", incoming_message)
+
+        expect(result).to be(true)
+      end
+    end
+
+    context 'when response is unsuccessful' do
+      it 'raises ProviderUnavailableError and logs the error' do
+        stub_request(:delete, "#{api_instance_path_with_token}/messages")
+          .with(
+            headers: stub_headers,
+            query: { messageId: outgoing_message.source_id, phone: test_send_phone_number, owner: 'true' }
+          )
+          .to_return(status: 400, body: 'error message')
+
+        allow(Rails.logger).to receive(:error)
+
+        expect do
+          service.delete_message("+#{test_send_phone_number}", outgoing_message)
+        end.to raise_error(Whatsapp::Providers::WhatsappZapiService::ProviderUnavailableError)
+
+        expect(Rails.logger).to have_received(:error).with('error message')
+      end
+    end
+  end
+
   describe '#send_message' do
     let(:request_path) { "#{api_instance_path_with_token}/send-text" }
     let(:result_body) { { 'messageId' => 'msg_123' } }

@@ -27,6 +27,7 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
       message.update!(content: I18n.t('conversations.messages.deleted'), content_type: :text, content_attributes: { deleted: true })
       message.attachments.destroy_all
     end
+    delete_message_on_channel
   end
 
   def retry
@@ -74,6 +75,15 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
 
   def already_translated_content_available?
     message.translations.present? && message.translations[permitted_params[:target_language]].present?
+  end
+
+  def delete_message_on_channel
+    return unless @conversation.inbox.channel.respond_to?(:delete_message)
+    return if message.source_id.blank?
+
+    @conversation.inbox.channel.delete_message(message, conversation: @conversation)
+  rescue StandardError => e
+    Rails.logger.error "Failed to delete message on channel: #{e.message}"
   end
 
   # API inbox check

@@ -241,6 +241,27 @@ class Whatsapp::Providers::WhatsappBaileysService < Whatsapp::Providers::BaseSer
     response.parsed_response&.first || { 'jid' => remote_jid, 'exists' => false }
   end
 
+  def delete_message(recipient_id, message)
+    @recipient_id = recipient_id
+
+    response = HTTParty.delete(
+      "#{provider_url}/connections/#{whatsapp_channel.phone_number}/messages",
+      headers: api_headers,
+      body: {
+        jid: remote_jid,
+        key: {
+          id: message.source_id,
+          remoteJid: remote_jid,
+          fromMe: message.message_type == 'outgoing'
+        }
+      }.to_json
+    )
+
+    raise ProviderUnavailableError unless process_response(response)
+
+    true
+  end
+
   private
 
   def provider_url
@@ -362,5 +383,6 @@ class Whatsapp::Providers::WhatsappBaileysService < Whatsapp::Providers::BaseSer
                       :read_messages,
                       :unread_message,
                       :received_messages,
-                      :on_whatsapp
+                      :on_whatsapp,
+                      :delete_message
 end

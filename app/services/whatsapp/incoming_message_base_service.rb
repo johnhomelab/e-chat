@@ -194,6 +194,7 @@ class Whatsapp::IncomingMessageBaseService # rubocop:disable Metrics/ClassLength
   def create_message(message, source_id: nil)
     content_attrs = outgoing_echo ? { external_echo: true } : {}
     content_attrs[:in_reply_to_external_id] = @in_reply_to_external_id if @in_reply_to_external_id.present?
+    content_attrs[:external_created_at] = message[:timestamp].to_i
 
     @message = @conversation.messages.build(
       content: message_content(message),
@@ -204,8 +205,7 @@ class Whatsapp::IncomingMessageBaseService # rubocop:disable Metrics/ClassLength
       status: outgoing_echo ? :delivered : :sent,
       sender: outgoing_echo ? nil : @contact,
       source_id: (source_id || message[:id]).to_s,
-      content_attributes: content_attrs,
-      external_created_at: message[:timestamp].to_i
+      content_attributes: content_attrs
     )
   end
 

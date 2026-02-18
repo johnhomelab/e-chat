@@ -489,6 +489,11 @@ RSpec.describe Channel::Whatsapp do
       context 'when provider does not implement the method' do
         let(:channel) { create(:channel_whatsapp, provider: 'whatsapp_cloud', validate_provider_config: false, sync_templates: false) }
 
+        before do
+          stub_request(:delete, "https://graph.facebook.com/v22.0/#{channel.provider_config['business_account_id']}/subscribed_apps")
+            .to_return(status: 200, body: '', headers: {})
+        end
+
         it 'does not invoke callback' do
           expect(channel).not_to receive(:disconnect_channel_provider)
 

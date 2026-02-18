@@ -92,6 +92,7 @@ const props = defineProps({
   medium: { type: String, default: '' },
   showImageResizeToolbar: { type: Boolean, default: false }, // A kill switch to show or hide the image toolbar
   focusOnMount: { type: Boolean, default: true },
+  enableCopilot: { type: Boolean, default: true },
 });
 
 const emit = defineEmits([
@@ -110,7 +111,10 @@ const emit = defineEmits([
 ]);
 
 const { t } = useI18n();
-const { captainTasksEnabled } = useCaptain();
+const { captainTasksEnabled: rawCaptainTasksEnabled } = useCaptain();
+const captainTasksEnabled = computed(
+  () => props.enableCopilot && rawCaptainTasksEnabled.value
+);
 
 const TYPING_INDICATOR_IDLE_TIME = 4000;
 const MAXIMUM_FILE_UPLOAD_SIZE = 4; // in MB

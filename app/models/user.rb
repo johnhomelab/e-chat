@@ -100,6 +100,8 @@ class User < ApplicationRecord
   has_many :messages, as: :sender, dependent: :nullify
   has_many :invitees, through: :account_users, class_name: 'User', foreign_key: 'inviter_id', source: :inviter, dependent: :nullify
 
+  has_many :scheduled_messages, as: :author, dependent: :nullify
+
   has_many :custom_filters, dependent: :destroy_async
   has_many :dashboard_apps, dependent: :nullify
   has_many :mentions, dependent: :destroy_async
@@ -190,6 +192,21 @@ class User < ApplicationRecord
 
   def mfa_feature_available?
     Chatwoot.mfa_enabled?
+  end
+
+  def signature_position
+    ui_settings&.fetch('signature_position', 'top') || 'top'
+  end
+
+  def signature_separator
+    ui_settings&.fetch('signature_separator', 'blank') || 'blank'
+  end
+
+  def signature_settings_with_defaults
+    {
+      'position' => signature_position,
+      'separator' => signature_separator
+    }
   end
 
   private

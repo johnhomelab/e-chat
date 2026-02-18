@@ -17,7 +17,7 @@ import NextButton from 'dashboard/components-next/button/Button.vue';
 import Switch from 'next/switch/Switch.vue';
 import Input from 'dashboard/components-next/input/Input.vue';
 import ComboBox from 'dashboard/components-next/combobox/ComboBox.vue';
-import languages from 'dashboard/components/widgets/conversation/advancedFilterItems/languages.js';
+import whatsappTemplateLanguages from './whatsappTemplateLanguages.js';
 import ConfirmTemplateUpdateDialog from './components/ConfirmTemplateUpdateDialog.vue';
 
 const props = defineProps({
@@ -28,13 +28,13 @@ const { t } = useI18n();
 const store = useStore();
 const labels = useMapGetter('labels/getLabels');
 
-const { isAWhatsAppChannel, isATwilioWhatsAppChannel } = useInbox(
+const { isATwilioWhatsAppChannel, isAWhatsAppCloudChannel } = useInbox(
   props.inbox?.id
 );
 
-// Computed to check if it's any type of WhatsApp channel (Cloud or Twilio)
-const isAnyWhatsAppChannel = computed(
-  () => isAWhatsAppChannel.value || isATwilioWhatsAppChannel.value
+// WhatsApp channels that require CSAT templates (Cloud and Twilio, NOT Baileys/Z-API)
+const isTemplateRequiredWhatsAppChannel = computed(
+  () => isAWhatsAppCloudChannel.value || isATwilioWhatsAppChannel.value
 );
 
 const isUpdating = ref(false);
@@ -80,7 +80,10 @@ const labelOptions = computed(() =>
 );
 
 const languageOptions = computed(() =>
-  languages.map(({ name, id }) => ({ label: `${name} (${id})`, value: id }))
+  whatsappTemplateLanguages.map(({ name, id }) => ({
+    label: `${name} (${id})`,
+    value: id,
+  }))
 );
 
 const messagePreviewData = computed(() => ({
@@ -162,7 +165,7 @@ const initializeState = () => {
     : [];
 
   // Store original template values for change detection
-  if (isAnyWhatsAppChannel.value) {
+  if (isTemplateRequiredWhatsAppChannel.value) {
     originalTemplateValues.value = {
       message: state.message,
       templateButtonText: state.templateButtonText,
@@ -172,7 +175,7 @@ const initializeState = () => {
 };
 
 const checkTemplateStatus = async () => {
-  if (!isAnyWhatsAppChannel.value) return;
+  if (!isTemplateRequiredWhatsAppChannel.value) return;
 
   try {
     templateLoading.value = true;
@@ -202,7 +205,7 @@ const checkTemplateStatus = async () => {
 onMounted(() => {
   initializeState();
   if (!labels.value?.length) store.dispatch('labels/get');
-  if (isAnyWhatsAppChannel.value) checkTemplateStatus();
+  if (isTemplateRequiredWhatsAppChannel.value) checkTemplateStatus();
 });
 
 watch(() => props.inbox, initializeState, { immediate: true });
@@ -232,7 +235,7 @@ const removeLabel = label => {
 
 // Check if template-related fields have changed
 const hasTemplateChanges = () => {
-  if (!isAnyWhatsAppChannel.value) return false;
+  if (!isTemplateRequiredWhatsAppChannel.value) return false;
 
   const original = originalTemplateValues.value;
   return (
@@ -302,7 +305,7 @@ const updateInbox = async attributes => {
 };
 
 const createTemplate = async () => {
-  if (!isAnyWhatsAppChannel.value) return null;
+  if (!isTemplateRequiredWhatsAppChannel.value) return null;
 
   const response = await store.dispatch('inboxes/createCSATTemplate', {
     inboxId: props.inbox.id,
@@ -323,7 +326,7 @@ const performSave = async () => {
 
     // For WhatsApp channels, create template first if needed
     if (
-      isAnyWhatsAppChannel.value &&
+      isTemplateRequiredWhatsAppChannel.value &&
       state.csatSurveyEnabled &&
       shouldCreateTemplate()
     ) {
@@ -395,7 +398,7 @@ const saveSettings = async () => {
   // Check if we need to show confirmation dialog for WhatsApp template changes
   // This applies to both WhatsApp Cloud and Twilio WhatsApp channels
   if (
-    isAnyWhatsAppChannel.value &&
+    isTemplateRequiredWhatsAppChannel.value &&
     state.csatSurveyEnabled &&
     hasExistingTemplate() &&
     hasTemplateChanges()
@@ -428,7 +431,7 @@ const handleConfirmTemplateUpdate = async () => {
       <div class="grid gap-5">
         <!-- Show display type only for non-WhatsApp channels -->
         <WithLabel
-          v-if="!isAnyWhatsAppChannel"
+          v-if="!isTemplateRequiredWhatsAppChannel"
           :label="$t('INBOX_MGMT.CSAT.DISPLAY_TYPE.LABEL')"
           name="display_type"
         >
@@ -438,7 +441,7 @@ const handleConfirmTemplateUpdate = async () => {
           />
         </WithLabel>
 
-        <template v-if="isAnyWhatsAppChannel">
+        <template v-if="isTemplateRequiredWhatsAppChannel">
           <div
             class="flex flex-col gap-4 justify-between w-full lg:flex-row lg:gap-6"
           >
@@ -463,6 +466,7 @@ const handleConfirmTemplateUpdate = async () => {
               />
 
               <WithLabel
+                v-if="shouldShowTemplateStatus"
                 :label="$t('INBOX_MGMT.CSAT.LANGUAGE.LABEL')"
                 name="language"
               >
@@ -495,6 +499,7 @@ const handleConfirmTemplateUpdate = async () => {
               class="flex flex-col flex-shrink-0 justify-start items-center p-6 mt-1 rounded-xl basis-2/5 bg-n-slate-2 outline outline-1 outline-n-weak"
             >
               <p
+                v-if="shouldShowTemplateStatus"
                 class="inline-flex items-center text-sm font-medium text-n-slate-11"
               >
                 {{ $t('INBOX_MGMT.CSAT.MESSAGE_PREVIEW.LABEL') }}
@@ -509,7 +514,7 @@ const handleConfirmTemplateUpdate = async () => {
               <CSATTemplate
                 :message="messagePreviewData"
                 :button-text="state.templateButtonText"
-                class="pt-12"
+                :class="shouldShowTemplateStatus ? 'pt-12' : ''"
               />
             </div>
           </div>
@@ -574,7 +579,7 @@ const handleConfirmTemplateUpdate = async () => {
         </WithLabel>
         <p class="text-sm italic text-n-slate-11">
           {{
-            isAnyWhatsAppChannel
+            isTemplateRequiredWhatsAppChannel
               ? $t('INBOX_MGMT.CSAT.WHATSAPP_NOTE')
               : $t('INBOX_MGMT.CSAT.NOTE')
           }}

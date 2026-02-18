@@ -360,6 +360,20 @@ export const actions = {
     const response = await InboxesAPI.getCSATTemplateStatus(inboxId);
     return response.data;
   },
+  setupChannelProvider: async (_, inboxId) => {
+    try {
+      await InboxesAPI.setupChannelProvider(inboxId);
+    } catch (error) {
+      throwErrorMessage(error);
+    }
+  },
+  disconnectChannelProvider: async (_, inboxId) => {
+    try {
+      await InboxesAPI.disconnectChannelProvider(inboxId);
+    } catch (error) {
+      throwErrorMessage(error);
+    }
+  },
 };
 
 export const mutations = {

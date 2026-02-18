@@ -159,6 +159,7 @@ useEventListener(document, 'touchend', onResizeEnd);
 
 const inboxes = useMapGetter('inboxes/getInboxes');
 const labels = useMapGetter('labels/getLabelsOnSidebar');
+const dashboardApps = useMapGetter('dashboardApps/getAppsOnSidebar');
 const teams = useMapGetter('teams/getMyTeams');
 const contactCustomViews = useMapGetter('customViews/getContactCustomViews');
 const conversationCustomViews = useMapGetter(
@@ -173,6 +174,7 @@ onMounted(() => {
   store.dispatch('attributes/get');
   store.dispatch('customViews/get', 'conversation');
   store.dispatch('customViews/get', 'contact');
+  store.dispatch('dashboardApps/get');
 });
 
 const sortedInboxes = computed(() =>
@@ -222,7 +224,7 @@ const newReportRoutes = () => [
 const reportRoutes = computed(() => newReportRoutes());
 
 const menuItems = computed(() => {
-  return [
+  const items = [
     {
       name: 'Inbox',
       label: t('SIDEBAR.INBOX'),
@@ -694,6 +696,23 @@ const menuItems = computed(() => {
       ],
     },
   ];
+
+  if (dashboardApps.value.length > 0) {
+    const settingsIndex = items.findIndex(item => item.name === 'Settings');
+    items.splice(settingsIndex, 0, {
+      name: 'Apps',
+      label: t('SIDEBAR.APPS'),
+      icon: 'i-lucide-layout-grid',
+      children: dashboardApps.value.map(app => ({
+        name: `app-${app.id}`,
+        label: app.title,
+        to: accountScopedRoute('dashboard_app_view', { appId: app.id }),
+        activeOn: ['dashboard_app_view'],
+      })),
+    });
+  }
+
+  return items;
 });
 </script>
 

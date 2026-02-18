@@ -133,8 +133,11 @@ Rails.application.routes.draw do
                 member do
                   post :translate
                   post :retry
+                  patch :edit_content
                 end
+                resources :attachments, only: [:update]
               end
+              resources :scheduled_messages, only: [:index, :create, :update, :destroy]
               resources :assignments, only: [:create]
               resources :labels, only: [:create, :index]
               resource :participants, only: [:show, :create, :update, :destroy]
@@ -215,9 +218,12 @@ Rails.application.routes.draw do
             get :campaigns, on: :member
             get :agent_bot, on: :member
             post :set_agent_bot, on: :member
+            post :setup_channel_provider, on: :member
+            post :disconnect_channel_provider, on: :member
             delete :avatar, on: :member
             post :sync_templates, on: :member
             get :health, on: :member
+            post :on_whatsapp, on: :member
             if ChatwootApp.enterprise?
               resource :conference, only: %i[create destroy], controller: 'conference' do
                 get :token, on: :member

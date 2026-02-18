@@ -50,6 +50,10 @@ pt_BR:
       not_found: Política de atribuição não encontrada
     attachments:
       invalid: Anexo inválido
+    automation:
+      scheduled_message:
+        delay_out_of_range: O atraso deve ser entre 1 minuto e 999 dias
+        content_attachment_or_template_required: A mensagem agendada deve ter conteúdo, anexo ou template
     saml:
       feature_not_enabled: SAML não está habilitado para esta conta
       sso_not_enabled: O SSO via SAML não está habilitado para esta instalação
@@ -97,6 +101,9 @@ pt_BR:
         connection_closed_error: Conexão fechada.
       validations:
         name: 'não deve iniciar ou terminar com símbolos e não deve ter os caracteres: < > / \ @.'
+      channel:
+        provider_connection:
+          wrong_phone_number: O número de telefone que você está tentando conectar não é o mesmo que o configurado. Certifique-se de que o número está correto antes de escanear o QR code.
     custom_filters:
       number_of_records: Limite atingido. O número máximo de filtros personalizados permitidos para um usuário por conta é de 1000.
       invalid_attribute: Chave de atributo inválido - [%{key}]. A chave deve ser uma das [%{allowed_keys}] ou um atributo personalizado definido na conta.

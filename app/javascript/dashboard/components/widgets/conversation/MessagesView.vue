@@ -4,6 +4,8 @@ import { ref, provide } from 'vue';
 import { useKeyboardEvents } from 'dashboard/composables/useKeyboardEvents';
 import { useLabelSuggestions } from 'dashboard/composables/useLabelSuggestions';
 import { useSnakeCase } from 'dashboard/composables/useTransformKeys';
+import { useAdmin } from 'dashboard/composables/useAdmin';
+import { useAlert } from 'dashboard/composables';
 
 // components
 import ReplyBox from './ReplyBox.vue';
@@ -35,6 +37,7 @@ import { REPLY_POLICY } from 'shared/constants/links';
 import wootConstants from 'dashboard/constants/globals';
 import { LOCAL_STORAGE_KEYS } from 'dashboard/constants/localStorage';
 import { INBOX_TYPES } from 'dashboard/helper/inbox';
+import WhatsappLinkDeviceModal from '../../../routes/dashboard/settings/inbox/components/WhatsappLinkDeviceModal.vue';
 
 export default {
   components: {
@@ -43,9 +46,11 @@ export default {
     Banner,
     ConversationLabelSuggestion,
     Spinner,
+    WhatsappLinkDeviceModal,
   },
   mixins: [inboxMixin],
   setup() {
+    const { isAdmin } = useAdmin();
     const isPopOutReplyBox = ref(false);
     const conversationPanelRef = ref(null);
 
@@ -73,6 +78,7 @@ export default {
       getLabelSuggestions,
       isLabelSuggestionFeatureEnabled,
       conversationPanelRef,
+      isAdmin,
     };
   },
   data() {
@@ -84,6 +90,7 @@ export default {
       isProgrammaticScroll: false,
       messageSentSinceOpened: false,
       labelSuggestions: [],
+      showLinkDeviceModal: false,
     };
   },
 
@@ -94,6 +101,9 @@ export default {
       listLoadingStatus: 'getAllMessagesLoaded',
       currentAccountId: 'getCurrentAccountId',
     }),
+    currentInbox() {
+      return this.$store.getters['inboxes/getInbox'](this.currentChat.inbox_id);
+    },
     isOpen() {
       return this.currentChat?.status === wootConstants.STATUS_TYPE.OPEN;
     },
@@ -243,6 +253,13 @@ export default {
         !this.is360DialogWhatsAppChannel;
 
       return { incoming, outgoing };
+    },
+    inboxSupportsEdit() {
+      // Currently only Baileys WhatsApp channel supports message editing
+      return this.isAWhatsAppBaileysChannel;
+    },
+    inboxProviderConnection() {
+      return this.currentInbox.provider_connection?.connection;
     },
   },
 
@@ -437,12 +454,75 @@ export default {
       const payload = useSnakeCase(message);
       await this.$store.dispatch('sendMessageWithData', payload);
     },
+    getInReplyToMessage(parentMessage) {
+      if (!parentMessage) return {};
+      const inReplyToMessageId = parentMessage.content_attributes?.in_reply_to;
+      if (!inReplyToMessageId) return {};
+
+      return this.currentChat?.messages.find(message => {
+        if (message.id === inReplyToMessageId) {
+          return true;
+        }
+        return false;
+      });
+    },
+    onOpenLinkDeviceModal() {
+      this.showLinkDeviceModal = true;
+    },
+    onCloseLinkDeviceModal() {
+      this.showLinkDeviceModal = false;
+    },
+    onSetupProviderConnection() {
+      this.$store
+        .dispatch('inboxes/setupChannelProvider', this.inbox.id)
+        .catch(e => {
+          // eslint-disable-next-line no-console
+          console.error('Error setting up provider connection:', e);
+          useAlert(
+            this.$t(
+              'CONVERSATION.INBOX.WHATSAPP_PROVIDER_CONNECTION.RECONNECT_FAILED'
+            )
+          );
+        });
+    },
   },
 };
 </script>
 
 <template>
   <div class="flex flex-col justify-between flex-grow h-full min-w-0 m-0">
+    <template v-if="isAWhatsAppBaileysChannel || isAWhatsAppZapiChannel">
+      <WhatsappLinkDeviceModal
+        v-if="showLinkDeviceModal"
+        :show="showLinkDeviceModal"
+        :on-close="onCloseLinkDeviceModal"
+        :inbox="currentInbox"
+      />
+      <Banner
+        v-if="inboxProviderConnection !== 'open'"
+        color-scheme="alert"
+        class="mt-2 mx-2 rounded-lg overflow-hidden"
+        :banner-message="
+          isAdmin
+            ? $t(
+                'CONVERSATION.INBOX.WHATSAPP_PROVIDER_CONNECTION.NOT_CONNECTED'
+              )
+            : $t(
+                'CONVERSATION.INBOX.WHATSAPP_PROVIDER_CONNECTION.NOT_CONNECTED_CONTACT_ADMIN'
+              )
+        "
+        has-action-button
+        :action-button-label="
+          isAdmin
+            ? $t('CONVERSATION.INBOX.WHATSAPP_PROVIDER_CONNECTION.LINK_DEVICE')
+            : ''
+        "
+        :action-button-icon="isAdmin ? '' : 'i-lucide-refresh-cw'"
+        @primary-action="
+          isAdmin ? onOpenLinkDeviceModal() : onSetupProviderConnection()
+        "
+      />
+    </template>
     <Banner
       v-if="!currentChat.can_reply"
       color-scheme="alert"
@@ -464,6 +544,7 @@ export default {
       :first-unread-id="unReadMessages[0]?.id"
       :is-an-email-channel="isAnEmailChannel"
       :inbox-supports-reply-to="inboxSupportsReplyTo"
+      :inbox-supports-edit="inboxSupportsEdit"
       :messages="getMessages"
       @retry="handleMessageRetry"
     >

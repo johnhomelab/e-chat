@@ -113,6 +113,7 @@ class Conversation < ApplicationRecord
   has_many :notifications, as: :primary_actor, dependent: :destroy_async
   has_many :attachments, through: :messages
   has_many :reporting_events, dependent: :destroy_async
+  has_many :scheduled_messages, dependent: :destroy
 
   before_save :ensure_snooze_until_reset
   before_create :determine_conversation_status
@@ -150,12 +151,12 @@ class Conversation < ApplicationRecord
     # FIXME: implement state machine with aasm
     self.status = open? ? :resolved : :open
     self.status = :open if pending? || snoozed?
-    save
+    save # rubocop:disable Rails/SaveBang
   end
 
   def toggle_priority(priority = nil)
     self.priority = priority.presence
-    save
+    save!
   end
 
   def bot_handoff!
@@ -316,8 +317,9 @@ class Conversation < ApplicationRecord
 
   def conversation_status_changed_to_open?
     return false unless open?
+
     # saved_change_to_status? method only works in case of update
-    return true if previous_changes.key?(:id) || saved_change_to_status?
+    true if previous_changes.key?(:id) || saved_change_to_status?
   end
 
   def create_label_change(user_name)

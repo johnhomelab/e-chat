@@ -380,5 +380,69 @@ describe Whatsapp::SendOnWhatsappService do
           ).to_return(status: 200, body: success_response, headers: { 'content-type' => 'application/json' })
       end
     end
+
+    context 'when provider is baileys' do
+      let(:whatsapp_channel) { create(:channel_whatsapp, provider: 'baileys', validate_provider_config: true) }
+      let(:contact_inbox) { create(:contact_inbox, inbox: whatsapp_channel.inbox, source_id: '123456789') }
+      let(:conversation) { create(:conversation, contact_inbox: contact_inbox, inbox: whatsapp_channel.inbox) }
+
+      before do
+        stub_request(:get, 'https://baileys.api/status/auth')
+          .with(
+            headers: {
+              'Accept' => '*/*',
+              'Accept-Encoding' => 'gzip;q=1.0,deflate;q=0.6,identity;q=0.3',
+              'Content-Type' => 'application/json',
+              'User-Agent' => 'Ruby',
+              'X-Api-Key' => 'test_key'
+            }
+          )
+          .to_return(status: 200, body: '', headers: {})
+      end
+
+      it 'calls channel.send_message if channel is not locked on outgoing message' do
+        conversation.contact.update!(phone_number: '+123456789')
+        message = create(:message, message_type: :outgoing, content: 'test', conversation: conversation)
+        allow(whatsapp_channel).to receive(:send_message).with('123456789', message).and_return('123456789')
+
+        described_class.new(message: message).perform
+
+        expect(message.reload.source_id).to eq('123456789')
+      end
+    end
+
+    context 'when provider is zapi' do
+      let(:whatsapp_channel) { create(:channel_whatsapp, provider: 'zapi', validate_provider_config: false) }
+      let(:contact_inbox) { create(:contact_inbox, inbox: whatsapp_channel.inbox, source_id: '123456789') }
+      let(:conversation) { create(:conversation, contact_inbox: contact_inbox, inbox: whatsapp_channel.inbox) }
+      let(:success_response) { { 'messageId' => 'msg_123' }.to_json }
+
+      before do
+        stub_request(:post, /.*/)
+          .to_return(status: 200, body: success_response, headers: { 'content-type' => 'application/json' })
+      end
+
+      context 'with recipient_id logic' do
+        it 'uses phone number when contact has phone_number for session messages' do
+          conversation.contact.update!(phone_number: '+5511987654321')
+          create(:message, message_type: :incoming, content: 'test', conversation: conversation)
+          message = create(:message, message_type: :outgoing, content: 'test', conversation: conversation)
+
+          expect(whatsapp_channel).to receive(:send_message).with('5511987654321', message).and_return('msg_123')
+
+          described_class.new(message: message).perform
+        end
+
+        it 'uses identifier with @lid suffix when contact has no phone_number for session messages' do
+          conversation.contact.update!(phone_number: nil, identifier: '123456789@lid')
+          create(:message, message_type: :incoming, content: 'test', conversation: conversation)
+          message = create(:message, message_type: :outgoing, content: 'test', conversation: conversation)
+
+          expect(whatsapp_channel).to receive(:send_message).with('123456789@lid', message).and_return('msg_123')
+
+          described_class.new(message: message).perform
+        end
+      end
+    end
   end
 end

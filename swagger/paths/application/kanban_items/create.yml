@@ -1,0 +1,50 @@
+tags:
+  - Kanban Items
+summary: Criar item no kanban
+description: Cria um novo item no kanban
+parameters:
+  - name: data
+    in: body
+    required: true
+    schema:
+      type: object
+      properties:
+        kanban_item:
+          type: object
+          properties:
+            funnel_id:
+              type: number
+              description: ID do funil
+            funnel_stage:
+              type: string
+              description: Estágio do funil
+            position:
+              type: number
+              description: Posição do item na lista
+            conversation_display_id:
+              type: string
+              description: ID de exibição da conversa associada
+            timer_started_at:
+              type: string
+              format: date-time
+              description: Data/hora de início do timer
+            timer_duration:
+              type: number
+              description: Duração do timer em segundos
+            custom_attributes:
+              type: object
+              description: Atributos customizados do item
+            item_details:
+              type: object
+              description: Detalhes específicos do item
+responses:
+  200:
+    description: Success
+    schema:
+      $ref: '#/definitions/kanban_item'
+  401:
+    description: Unauthorized
+  403:
+    description: Access denied
+  422:
+    description: Validation error

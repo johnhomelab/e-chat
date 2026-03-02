@@ -1,0 +1,138 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: stacklabdigital/kanban
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Get latest tag
+        id: get_latest_tag
+        run: |
+          # Busca a tag mais recente no formato v*.*.* 
+          LATEST_TAG=$(git tag -l "v*.*.*" | sort -V | tail -n1)
+          
+          # Se não houver tags, começa com v2.7.6 (será incrementada para v2.7.7)
+          if [ -z "$LATEST_TAG" ]; then
+            LATEST_TAG="v2.7.6"
+          fi
+          
+          echo "Latest tag: $LATEST_TAG"
+          echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+
+      - name: Calculate next version
+        id: next_version
+        run: |
+          LATEST_TAG=${{ steps.get_latest_tag.outputs.latest_tag }}
+          
+          # Remove o 'v' e separa os números da versão
+          VERSION_WITHOUT_V=${LATEST_TAG#v}
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION_WITHOUT_V"
+          
+          # Incrementa o patch
+          PATCH=$((PATCH + 1))
+          
+          # Forma a nova versão
+          NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+          
+          echo "New version: $NEW_VERSION"
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=raw,value=${{ steps.next_version.outputs.new_version }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            RAILS_ENV=production
+            STACKLAB_ENABLED=true
+
+      - name: Create Git tag
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag ${{ steps.next_version.outputs.new_version }}
+          git push origin ${{ steps.next_version.outputs.new_version }}
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Gera changelog simples baseado nos commits desde a última tag
+          LATEST_TAG=${{ steps.get_latest_tag.outputs.latest_tag }}
+          NEW_VERSION=${{ steps.next_version.outputs.new_version }}
+          
+          if [ "$LATEST_TAG" = "v2.7.6" ]; then
+            # Se for a primeira release, pega os últimos 10 commits
+            CHANGELOG=$(git log --oneline -10 --pretty=format:"- %s")
+          else
+            # Senão, pega commits desde a última tag
+            CHANGELOG=$(git log ${LATEST_TAG}..HEAD --oneline --pretty=format:"- %s")
+          fi
+          
+          echo "## Changes in $NEW_VERSION" > changelog.md
+          echo "" >> changelog.md
+          echo "$CHANGELOG" >> changelog.md
+          
+          # Converte quebras de linha para o formato do GitHub
+          CHANGELOG_ESCAPED=$(cat changelog.md | sed ':a;N;$!ba;s/\n/%0A/g')
+          echo "changelog=$CHANGELOG_ESCAPED" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.next_version.outputs.new_version }}
+          release_name: Release ${{ steps.next_version.outputs.new_version }}
+          body: ${{ steps.changelog.outputs.changelog }}
+          draft: false
+          prerelease: false
+
+      - name: Summary
+        run: |
+          echo "✅ Successfully built and released version ${{ steps.next_version.outputs.new_version }}"
+          echo "🐳 Docker image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          echo "🐳 Docker image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.next_version.outputs.new_version }}"
+          echo "🏷️  Git tag: ${{ steps.next_version.outputs.new_version }}"

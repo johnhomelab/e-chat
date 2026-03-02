@@ -1,0 +1,88 @@
+Endpoints do KanbanItems
+=======================
+
+Base URL: app.seudominio.com/api/v1/accounts/:account_id
+
+Headers Obrigatórios
+-------------------
+- Authorization: Bearer {access_token}
+- Content-Type: application/json
+
+1. Listagem de Itens
+-------------------
+GET /kanban_items
+- Lista todos os itens do kanban da conta
+- Parâmetros de query opcionais:
+  * funnel_id: ID do funil para filtrar
+
+2. Exibir Item
+-------------
+GET /kanban_items/:id
+- Retorna os detalhes de um item específico
+
+3. Criar Item
+------------
+POST /kanban_items
+- Cria um novo item no kanban
+- Payload esperado:
+  {
+    "kanban_item": {
+      "funnel_id": number,
+      "funnel_stage": string,
+      "position": number,
+      "item_details": {
+        "title": string,
+        "description": string,
+        "priority": string,
+        "assignee": object
+      },
+      "custom_attributes": object
+    }
+  }
+
+4. Atualizar Item
+----------------
+PATCH/PUT /kanban_items/:id
+- Atualiza um item existente
+- Aceita os mesmos campos do endpoint de criação
+
+5. Excluir Item
+--------------
+DELETE /kanban_items/:id
+- Remove um item do kanban
+
+6. Mover Item para Estágio
+-------------------------
+POST /kanban_items/:id/move_to_stage
+- Move um item para um novo estágio do funil
+- Payload esperado:
+  {
+    "funnel_stage": string
+  }
+
+7. Reordenar Itens
+-----------------
+POST /kanban_items/reorder
+- Reordena os itens dentro de um estágio
+- Payload esperado:
+  {
+    "funnel_stage": string,
+    "item_ids": number[]
+  }
+
+8. Listar Itens por Funil
+------------------------
+GET /funnels/:funnel_id/kanban_items
+- Lista todos os itens de um funil específico
+
+Códigos de Resposta
+------------------
+- 200: Sucesso
+- 201: Criado com sucesso
+- 400: Requisição inválida
+- 401: Não autorizado
+- 403: Acesso negado
+- 404: Recurso não encontrado
+- 422: Erro de validação
+- 500: Erro interno do servidor
+

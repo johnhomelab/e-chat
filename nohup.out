@@ -1,0 +1,18 @@
+114488:C 23 Jan 2025 20:48:54.853 # WARNING Memory overcommit must be enabled! Without it, a background save or replication may fail under low memory condition. Being disabled, it can also cause failures without low memory condition, see https://github.com/jemalloc/jemalloc/issues/1328. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
+114488:C 23 Jan 2025 20:48:54.853 * oO0OoO0OoO0Oo Valkey is starting oO0OoO0OoO0Oo
+114488:C 23 Jan 2025 20:48:54.853 * Valkey version=8.0.1, bits=64, commit=00000000, modified=0, pid=114488, just started
+114488:C 23 Jan 2025 20:48:54.853 # Warning: no config file specified, using the default config. In order to specify a config file use redis-server /path/to/valkey.conf
+114488:M 23 Jan 2025 20:48:54.854 * monotonic clock: POSIX clock_gettime
+114488:M 23 Jan 2025 20:48:54.855 * Running mode=standalone, port=6379.
+114488:M 23 Jan 2025 20:48:54.856 * Server initialized
+114488:M 23 Jan 2025 20:48:54.856 * Loading RDB produced by Valkey version 8.0.1
+114488:M 23 Jan 2025 20:48:54.856 * RDB age 40 seconds
+114488:M 23 Jan 2025 20:48:54.857 * RDB memory usage when created 0.87 Mb
+114488:M 23 Jan 2025 20:48:54.857 * Done loading RDB, keys loaded: 0, keys expired: 0.
+114488:M 23 Jan 2025 20:48:54.858 * DB loaded from disk: 0.002 seconds
+114488:M 23 Jan 2025 20:48:54.858 * Ready to accept connections tcp
+114488:M 23 Jan 2025 20:53:55.046 * 100 changes in 300 seconds. Saving...
+114488:M 23 Jan 2025 20:53:55.047 * Background saving started by pid 124172
+124172:C 23 Jan 2025 20:53:55.058 * DB saved on disk
+124172:C 23 Jan 2025 20:53:55.058 * Fork CoW for RDB: current 0 MB, peak 0 MB, average 0 MB
+114488:M 23 Jan 2025 20:53:55.147 * Background saving terminated with success

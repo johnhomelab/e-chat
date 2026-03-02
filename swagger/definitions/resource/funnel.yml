@@ -1,0 +1,35 @@
+type: object
+properties:
+  id:
+    type: number
+    description: ID do funil
+  name:
+    type: string
+    description: Nome do funil
+  description:
+    type: string
+    description: Descrição do funil
+  account_id:
+    type: number
+    description: ID da conta associada ao funil
+  created_by_id:
+    type: number
+    description: ID do usuário que criou o funil
+  updated_by_id:
+    type: number
+    description: ID do usuário que atualizou o funil por último
+  status:
+    type: string
+    enum: [active, archived]
+    description: Status do funil (ativo ou arquivado)
+  position:
+    type: number
+    description: Posição do funil na lista
+  created_at:
+    type: string
+    format: date-time
+    description: Data de criação do funil
+  updated_at:
+    type: string
+    format: date-time
+    description: Data da última atualização do funil

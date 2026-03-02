@@ -1,0 +1,47 @@
+<% content_for(:title) do %>
+  Galeria de Scripts
+<% end %>
+
+<header class="main-content__header" role="banner">
+  <div class="flex justify-between items-center">
+    <h1 class="main-content__page-title" id="page-title">
+      <%= content_for(:title) %>
+    </h1>
+    <%= link_to super_admin_dashboard_scripts_path, class: "px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600" do %>
+      <span class="mr-1">←</span> Voltar para Scripts
+    <% end %>
+  </div>
+</header>
+
+<section class="main-content__body">
+  <div class="mb-6">
+    <p class="text-slate-600">
+      Repositório de scripts prontos para personalizar seu dashboard. Escolha um script para visualizar ou importar.
+    </p>
+  </div>
+
+  <% if @scripts.empty? %>
+    <div class="p-8 bg-gray-50 text-center rounded-md border">
+      <p class="text-slate-600">Não foi possível carregar scripts do repositório. Tente novamente mais tarde.</p>
+    </div>
+  <% else %>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <% @scripts.each do |script| %>
+        <div class="border rounded-md overflow-hidden hover:shadow-md transition-shadow">
+          <div class="bg-slate-50 p-4 border-b">
+            <h3 class="font-medium"><%= script['name'].split('.').first.titleize %></h3>
+          </div>
+          <div class="p-4">
+            <p class="text-sm text-slate-600 mb-4 h-16">
+              Script para personalização do dashboard com <%= script['name'].split('.').first.titleize %>.
+            </p>
+            <div class="flex justify-between items-center">
+              <span class="text-xs text-slate-500"><%= number_to_human_size(script['size']) %></span>
+              <%= link_to "Ver Script", "/super_admin/script_gallery/#{script['name']}", class: "px-3 py-1 bg-indigo-50 text-indigo-700 rounded-md text-sm border border-indigo-200" %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</section> 

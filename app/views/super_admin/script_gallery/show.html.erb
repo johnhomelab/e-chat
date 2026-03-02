@@ -1,0 +1,71 @@
+<% content_for(:title) do %>
+  <%= @script_name.split('.').first.titleize %>
+<% end %>
+
+<header class="main-content__header" role="banner">
+  <div class="flex justify-between items-center">
+    <h1 class="main-content__page-title" id="page-title">
+      <%= content_for(:title) %>
+    </h1>
+  </div>
+</header>
+
+<div class="main-content__body">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">
+    <!-- Coluna do código -->
+    <div class="border rounded-lg overflow-hidden">
+      <div class="flex justify-between items-center bg-slate-50 px-4 py-2 border-b">
+        <h2 class="text-md font-medium">Arquivo: <%= @script_name %></h2>
+        <div class="flex space-x-2">
+          <button id="copy-btn" class="text-xs px-2 py-1 bg-blue-100 rounded text-blue-700 hover:bg-blue-200 flex items-center">
+            <span class="mr-1">📋</span> Copiar
+          </button>
+          <a href="<%= @script_preview_url %>" target="_blank" class="text-xs px-2 py-1 bg-slate-200 rounded text-slate-700 hover:bg-slate-300">
+            Ver no GitHub
+          </a>
+        </div>
+      </div>
+      <pre id="script-content" class="p-4 overflow-auto" style="max-height: 600px; font-size: 0.85rem;"><%= h(@script_content) %></pre>
+    </div>
+    
+    <!-- Coluna do preview usando iframe com sandbox -->
+    <div class="border rounded-lg overflow-hidden">
+      <div class="bg-slate-50 px-4 py-2 border-b">
+        <h2 class="text-md font-medium">Preview Renderizado</h2>
+      </div>
+      <div id="preview-container" class="bg-white p-0">
+        <iframe id="preview-frame" srcdoc="<%= @script_content.gsub('"', '&quot;').html_safe %>" 
+                sandbox="allow-scripts allow-same-origin" 
+                class="w-full h-[600px] border-0"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Função para copiar o conteúdo para a área de transferência
+  document.getElementById('copy-btn').addEventListener('click', function() {
+    const scriptContent = document.getElementById('script-content').textContent;
+    navigator.clipboard.writeText(scriptContent)
+      .then(() => {
+        // Feedback visual de sucesso
+        const originalText = this.innerHTML;
+        this.innerHTML = '<span class="mr-1">✓</span> Copiado!';
+        this.classList.remove('bg-blue-100', 'text-blue-700');
+        this.classList.add('bg-green-100', 'text-green-700');
+        
+        // Restaurar o botão após 2 segundos
+        setTimeout(() => {
+          this.innerHTML = originalText;
+          this.classList.remove('bg-green-100', 'text-green-700');
+          this.classList.add('bg-blue-100', 'text-blue-700');
+        }, 2000);
+      })
+      .catch(err => {
+        console.error('Erro ao copiar: ', err);
+        alert('Não foi possível copiar o texto. Tente novamente.');
+      });
+  });
+});
+</script> 

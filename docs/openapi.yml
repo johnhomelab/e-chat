@@ -1,0 +1,1859 @@
+openapi: "3.1.0"
+info:
+  title: "Chatwoot Kanban API"
+  description: |
+    API para gerenciamento de Funnels e Kanban Items no Chatwoot.
+
+    ## Recursos Principais
+
+    * **Funnels**: Gerenciamento de funis de vendas
+    * **Kanban Items**: Itens do quadro Kanban
+    * **Estágios**: Controle de estágios do funil
+    * **Estatísticas**: Métricas e relatórios
+    * **Agentes**: Atribuição e gerenciamento de agentes
+    * **Checklist**: Gerenciamento de tarefas
+    * **Notas**: Sistema de anotações
+
+    ## Autenticação
+
+    Esta API utiliza autenticação via token Bearer. Inclua o header:
+    ```
+    Authorization: Bearer <seu-token>
+    ```
+  version: "1.0.0"
+  contact:
+    name: "Equipe Chatwoot"
+    url: "https://github.com/chatwoot/chatwoot"
+servers:
+  - url: "https://api.chatwoot.com/api/v1"
+    description: "API v1"
+security:
+  - bearerAuth: []
+tags:
+  - name: "Funnels"
+    description: "Operações relacionadas aos funis de vendas"
+  - name: "Kanban Items"
+    description: "Operações relacionadas aos itens do Kanban"
+  - name: "Agents"
+    description: "Operações relacionadas aos agentes"
+  - name: "Checklist"
+    description: "Operações relacionadas ao checklist"
+  - name: "Notes"
+    description: "Operações relacionadas às notas"
+  - name: "Debug"
+    description: "Operações de debug e diagnóstico"
+paths:
+  /accounts/{account_id}/funnels:
+    get:
+      tags:
+        - "Funnels"
+      summary: "Listar funnels"
+      description: "Retorna todos os funis de vendas da conta ordenados por nome"
+      operationId: "listFunnels"
+      parameters:
+        - name: "account_id"
+          in: "path"
+          required: true
+          description: "ID da conta"
+          schema:
+            type: "integer"
+          example: 1
+      responses:
+        "200":
+          description: "Lista de funnels retornada com sucesso"
+          content:
+            application/json:
+              schema:
+                type: "array"
+                items:
+                  $ref: "#/components/schemas/Funnel"
+              example:
+                - id: 1
+                  name: "Funnel de Vendas"
+                  description: "Funnel principal de vendas"
+                  active: true
+                  account_id: 1
+                  created_at: "2024-01-15T10:00:00Z"
+                  updated_at: "2024-01-15T10:00:00Z"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags:
+        - "Funnels"
+      summary: "Criar funnel"
+      description: "Cria um novo funil de vendas com validação de IDs únicos de etapas"
+      operationId: "createFunnel"
+      parameters:
+        - name: "account_id"
+          in: "path"
+          required: true
+          description: "ID da conta"
+          schema:
+            type: "integer"
+          example: 1
+      requestBody:
+        required: true
+        description: "Dados do funil a ser criado"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FunnelCreate"
+            example:
+              funnel:
+                name: "Novo Funnel"
+                description: "Descrição do funil"
+                active: true
+                stages:
+                  lead: { name: "Lead", color: "#3b82f6", id: "lead_1" }
+                  prospect:
+                    { name: "Prospecto", color: "#f59e0b", id: "prospect_1" }
+                  customer:
+                    { name: "Cliente", color: "#10b981", id: "customer_1" }
+      responses:
+        "201":
+          description: "Funnel criado com sucesso"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Funnel"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "403":
+          description: "Limite de funnels atingido"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FunnelLimitError"
+  /accounts/{account_id}/funnels/{id}:
+    get:
+      tags:
+        - "Funnels"
+      summary: "Obter funnel"
+      description: "Retorna detalhes de um funil específico"
+      operationId: "getFunnel"
+      parameters:
+        - name: "account_id"
+          in: "path"
+          required: true
+          description: "ID da conta"
+          schema:
+            type: "integer"
+          example: 1
+        - name: "id"
+          in: "path"
+          required: true
+          description: "ID do funil"
+          schema:
+            type: "integer"
+          example: 1
+      responses:
+        "200":
+          description: "Funnel encontrado"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Funnel"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags:
+        - "Funnels"
+      summary: "Atualizar funnel"
+      description: "Atualiza um funil de vendas existente"
+      operationId: "updateFunnel"
+      parameters:
+        - name: "account_id"
+          in: "path"
+          required: true
+          description: "ID da conta"
+          schema:
+            type: "integer"
+          example: 1
+        - name: "id"
+          in: "path"
+          required: true
+          description: "ID do funil"
+          schema:
+            type: "integer"
+          example: 1
+      requestBody:
+        required: true
+        description: "Dados do funil a ser atualizado"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FunnelUpdate"
+            example:
+              funnel:
+                name: "Funnel Atualizado"
+                description: "Nova descrição"
+                active: true
+      responses:
+        "200":
+          description: "Funnel atualizado com sucesso"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Funnel"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+    delete:
+      tags:
+        - "Funnels"
+      summary: "Excluir funnel"
+      description: "Exclui um funil de vendas"
+      operationId: "deleteFunnel"
+      parameters:
+        - name: "account_id"
+          in: "path"
+          required: true
+          description: "ID da conta"
+          schema:
+            type: "integer"
+          example: 1
+        - name: "id"
+          in: "path"
+          required: true
+          description: "ID do funil"
+          schema:
+            type: "integer"
+          example: 1
+      responses:
+        "200":
+          description: "Funnel excluído com sucesso"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /accounts/{account_id}/funnels/{id}/stage_stats:
+    get:
+      tags:
+        - "Funnels"
+      summary: "Estatísticas por etapa"
+      description: "Retorna estatísticas dos itens por etapa do funil (count e valor total)"
+      operationId: "getFunnelStageStats"
+      parameters:
+        - name: "account_id"
+          in: "path"
+          required: true
+          description: "ID da conta"
+          schema:
+            type: "integer"
+          example: 1
+        - name: "id"
+          in: "path"
+          required: true
+          description: "ID do funil"
+          schema:
+            type: "integer"
+          example: 1
+      responses:
+        "200":
+          description: "Estatísticas das etapas"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StageStats"
+              example:
+                stages:
+                  lead:
+                    count: 5
+                    total_value: 5000.00
+                  prospect:
+                    count: 3
+                    total_value: 3000.00
+                  customer:
+                    count: 2
+                    total_value: 2000.00
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /accounts/{account_id}/kanban_items:
+    get:
+      tags:
+        - "Kanban Items"
+      summary: "Listar kanban items"
+      description: "Retorna todos os itens do Kanban com paginação e filtros"
+      operationId: "listKanbanItems"
+      parameters:
+        - name: "account_id"
+          in: "path"
+          required: true
+          description: "ID da conta"
+          schema:
+            type: "integer"
+          example: 1
+        - name: "funnel_id"
+          in: "query"
+          required: true
+          description: "ID do funil"
+          schema:
+            type: "integer"
+          example: 1
+        - name: "stage_id"
+          in: "query"
+          description: "ID da etapa para filtrar"
+          schema:
+            type: "string"
+          example: "lead"
+        - name: "agent_id"
+          in: "query"
+          description: "ID do agente para filtrar"
+          schema:
+            type: "integer"
+          example: 1
+        - name: "page"
+          in: "query"
+          description: "Número da página (padrão: 1)"
+          schema:
+            type: "integer"
+            default: 1
+          example: 1
+      responses:
+        "200":
+          description: "Lista de kanban items com paginação"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KanbanItemsResponse"
+              example:
+                items:
+                  - id: 1
+                    funnel_id: 1
+                    funnel_stage: "lead"
+                    position: 1
+                    item_details:
+                      title: "Novo Lead"
+                      description: "Descrição do lead"
+                      priority: "high"
+                      value: 1000.00
+                pagination:
+                  current_page: 1
+                  total_count: 50
+                  has_more: true
+                  items_per_page: 50
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    post:
+      tags:
+        - "Kanban Items"
+      summary: "Criar kanban item"
+      description: "Cria um novo item no Kanban"
+      operationId: "createKanbanItem"
+      parameters:
+        - name: "account_id"
+          in: "path"
+          required: true
+          description: "ID da conta"
+          schema:
+            type: "integer"
+          example: 1
+      requestBody:
+        required: true
+        description: "Dados do item a ser criado"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KanbanItemCreate"
+            example:
+              kanban_item:
+                funnel_id: 1
+                funnel_stage: "lead"
+                position: 1
+                conversation_display_id: 123
+                item_details:
+                  title: "Novo Lead"
+                  description: "Descrição do lead"
+                  priority: "high"
+                  value: 1000.00
+                  conversation_id: 123
+      responses:
+        "201":
+          description: "Kanban item criado"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KanbanItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+  /accounts/{account_id}/kanban_items/reorder:
+    post:
+      tags:
+        - "Kanban Items"
+      summary: "Reordenar kanban items"
+      description: "Reordena os itens do Kanban em suas respectivas etapas"
+      operationId: "reorderKanbanItems"
+      parameters:
+        - name: "account_id"
+          in: "path"
+          required: true
+          description: "ID da conta"
+          schema:
+            type: "integer"
+          example: 1
+      requestBody:
+        required: true
+        description: "Dados de reordenação"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReorderRequest"
+            example:
+              positions:
+                - id: 1
+                  position: 1
+                  funnel_stage: "lead"
+                - id: 2
+                  position: 2
+                  funnel_stage: "lead"
+                - id: 3
+                  position: 1
+                  funnel_stage: "prospect"
+      responses:
+        "200":
+          description: "Items reordenados com sucesso"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+  /accounts/{account_id}/kanban_items/debug:
+    get:
+      tags:
+        - "Debug"
+      summary: "Debug kanban items"
+      description: "Retorna informações de debug sobre os itens do Kanban"
+      operationId: "debugKanbanItems"
+      parameters:
+        - name: "account_id"
+          in: "path"
+          required: true
+          description: "ID da conta"
+          schema:
+            type: "integer"
+          example: 1
+        - name: "funnel_id"
+          in: "query"
+          required: true
+          description: "ID do funil"
+          schema:
+            type: "integer"
+          example: 1
+      responses:
+        "200":
+          description: "Informações de debug"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DebugInfo"
+              example:
+                environment: "development"
+                ruby_version: "3.2.0"
+                rails_version: "7.1.0"
+                kanban_items_count: 10
+                has_conversation_data: true
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /accounts/{account_id}/kanban_items/{id}:
+    get:
+      tags:
+        - "Kanban Items"
+      summary: "Obter kanban item"
+      description: "Retorna detalhes de um item específico com cache"
+      operationId: "getKanbanItem"
+      parameters:
+        - name: "account_id"
+          in: "path"
+          required: true
+          description: "ID da conta"
+          schema:
+            type: "integer"
+          example: 1
+        - name: "id"
+          in: "path"
+          required: true
+          description: "ID do item"
+          schema:
+            type: "integer"
+          example: 1
+      responses:
+        "200":
+          description: "Kanban item encontrado"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KanbanItem"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags:
+        - "Kanban Items"
+      summary: "Atualizar kanban item"
+      description: "Atualiza um item do Kanban"
+      operationId: "updateKanbanItem"
+      parameters:
+        - name: "account_id"
+          in: "path"
+          required: true
+          description: "ID da conta"
+          schema:
+            type: "integer"
+          example: 1
+        - name: "id"
+          in: "path"
+          required: true
+          description: "ID do item"
+          schema:
+            type: "integer"
+          example: 1
+      requestBody:
+        required: true
+        description: "Dados do item a ser atualizado"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KanbanItemUpdate"
+            example:
+              kanban_item:
+                funnel_stage: "prospect"
+                position: 2
+                item_details:
+                  title: "Lead Atualizado"
+                  priority: "medium"
+      responses:
+        "200":
+          description: "Kanban item atualizado"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KanbanItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+    delete:
+      tags:
+        - "Kanban Items"
+      summary: "Excluir kanban item"
+      description: "Exclui um item do Kanban"
+      operationId: "deleteKanbanItem"
+      parameters:
+        - name: "account_id"
+          in: "path"
+          required: true
+          description: "ID da conta"
+          schema:
+            type: "integer"
+          example: 1
+        - name: "id"
+          in: "path"
+          required: true
+          description: "ID do item"
+          schema:
+            type: "integer"
+          example: 1
+      responses:
+        "200":
+          description: "Kanban item excluído com sucesso"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /accounts/{account_id}/kanban_items/{id}/move_to_stage:
+    post:
+      tags:
+        - "Kanban Items"
+      summary: "Mover item para etapa"
+      description: "Move um item do Kanban para uma etapa específica"
+      operationId: "moveKanbanItemToStage"
+      parameters:
+        - name: "account_id"
+          in: "path"
+          required: true
+          description: "ID da conta"
+          schema:
+            type: "integer"
+          example: 1
+        - name: "id"
+          in: "path"
+          required: true
+          description: "ID do item"
+          schema:
+            type: "integer"
+          example: 1
+        - name: "funnel_stage"
+          in: "query"
+          required: true
+          description: "Nova etapa do item"
+          schema:
+            type: "string"
+          example: "prospect"
+        - name: "funnel_id"
+          in: "query"
+          description: "ID do funil"
+          schema:
+            type: "integer"
+          example: 1
+      responses:
+        "200":
+          description: "Item movido para etapa com sucesso"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /accounts/{account_id}/kanban_items/{id}/move:
+    post:
+      tags:
+        - "Kanban Items"
+      summary: "Mover item"
+      description: "Move um item do Kanban para outro funil/etapa"
+      operationId: "moveKanbanItem"
+      parameters:
+        - name: "account_id"
+          in: "path"
+          required: true
+          description: "ID da conta"
+          schema:
+            type: "integer"
+          example: 1
+        - name: "id"
+          in: "path"
+          required: true
+          description: "ID do item"
+          schema:
+            type: "integer"
+          example: 1
+        - name: "funnel_id"
+          in: "query"
+          required: true
+          description: "ID do funil de destino"
+          schema:
+            type: "integer"
+          example: 1
+        - name: "funnel_stage"
+          in: "query"
+          required: true
+          description: "Etapa de destino"
+          schema:
+            type: "string"
+          example: "prospect"
+      responses:
+        "200":
+          description: "Item movido com sucesso"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KanbanItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /accounts/{account_id}/kanban_items/{id}/create_checklist_item:
+    post:
+      tags:
+        - "Checklist"
+      summary: "Criar item do checklist"
+      description: "Adiciona um novo item ao checklist do kanban item"
+      operationId: "createChecklistItem"
+      parameters:
+        - name: "account_id"
+          in: "path"
+          required: true
+          description: "ID da conta"
+          schema:
+            type: "integer"
+          example: 1
+        - name: "id"
+          in: "path"
+          required: true
+          description: "ID do item"
+          schema:
+            type: "integer"
+          example: 1
+      requestBody:
+        required: true
+        description: "Dados do item do checklist"
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                text:
+                  type: "string"
+                  description: "Texto do item do checklist"
+                  example: "Fazer follow-up com o cliente"
+              required:
+                - "text"
+            example:
+              text: "Fazer follow-up com o cliente"
+      responses:
+        "200":
+          description: "Item do checklist criado"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KanbanItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /accounts/{account_id}/kanban_items/{id}/create_note:
+    post:
+      tags:
+        - "Notes"
+      summary: "Criar nota"
+      description: "Adiciona uma nova nota ao kanban item"
+      operationId: "createNote"
+      parameters:
+        - name: "account_id"
+          in: "path"
+          required: true
+          description: "ID da conta"
+          schema:
+            type: "integer"
+          example: 1
+        - name: "id"
+          in: "path"
+          required: true
+          description: "ID do item"
+          schema:
+            type: "integer"
+          example: 1
+      requestBody:
+        required: true
+        description: "Dados da nota"
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                text:
+                  type: "string"
+                  description: "Texto da nota"
+                  example: "Cliente interessado no produto premium"
+              required:
+                - "text"
+            example:
+              text: "Cliente interessado no produto premium"
+      responses:
+        "200":
+          description: "Nota criada"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KanbanItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /accounts/{account_id}/kanban_items/{id}/assign_agent:
+    post:
+      tags:
+        - "Agents"
+      summary: "Atribuir agente"
+      description: "Atribui um agente ao kanban item"
+      operationId: "assignAgent"
+      parameters:
+        - name: "account_id"
+          in: "path"
+          required: true
+          description: "ID da conta"
+          schema:
+            type: "integer"
+          example: 1
+        - name: "id"
+          in: "path"
+          required: true
+          description: "ID do item"
+          schema:
+            type: "integer"
+          example: 1
+      requestBody:
+        required: true
+        description: "Dados da atribuição"
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                agent_id:
+                  type: "integer"
+                  description: "ID do agente"
+                  example: 1
+              required:
+                - "agent_id"
+            example:
+              agent_id: 1
+      responses:
+        "200":
+          description: "Agente atribuído"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KanbanItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+  /accounts/{account_id}/kanban_items/{id}/remove_agent:
+    post:
+      tags:
+        - "Agents"
+      summary: "Remover agente"
+      description: "Remove um agente do kanban item"
+      operationId: "removeAgent"
+      parameters:
+        - name: "account_id"
+          in: "path"
+          required: true
+          description: "ID da conta"
+          schema:
+            type: "integer"
+          example: 1
+        - name: "id"
+          in: "path"
+          required: true
+          description: "ID do item"
+          schema:
+            type: "integer"
+          example: 1
+      requestBody:
+        required: true
+        description: "Dados da remoção"
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                agent_id:
+                  type: "integer"
+                  description: "ID do agente"
+                  example: 1
+              required:
+                - "agent_id"
+            example:
+              agent_id: 1
+      responses:
+        "200":
+          description: "Agente removido"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KanbanItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+  /accounts/{account_id}/kanban_items/{id}/assigned_agents:
+    get:
+      tags:
+        - "Agents"
+      summary: "Listar agentes atribuídos"
+      description: "Retorna os agentes atribuídos ao kanban item"
+      operationId: "getAssignedAgents"
+      parameters:
+        - name: "account_id"
+          in: "path"
+          required: true
+          description: "ID da conta"
+          schema:
+            type: "integer"
+          example: 1
+        - name: "id"
+          in: "path"
+          required: true
+          description: "ID do item"
+          schema:
+            type: "integer"
+          example: 1
+      responses:
+        "200":
+          description: "Agentes atribuídos"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssignedAgentsResponse"
+              example:
+                assigned_agents:
+                  - id: 1
+                    name: "João Silva"
+                    email: "joao@example.com"
+                    avatar_url: "https://example.com/avatar.jpg"
+                    availability_status: "online"
+                primary_agent:
+                  id: 1
+                  name: "João Silva"
+                  email: "joao@example.com"
+                  avatar_url: "https://example.com/avatar.jpg"
+                  availability_status: "online"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /accounts/{account_id}/kanban_items/{id}/change_status:
+    post:
+      tags:
+        - "Kanban Items"
+      summary: "Mudar status"
+      description: "Muda o status do kanban item (won, lost, open)"
+      operationId: "changeStatus"
+      parameters:
+        - name: "account_id"
+          in: "path"
+          required: true
+          description: "ID da conta"
+          schema:
+            type: "integer"
+          example: 1
+        - name: "id"
+          in: "path"
+          required: true
+          description: "ID do item"
+          schema:
+            type: "integer"
+          example: 1
+      requestBody:
+        required: true
+        description: "Novo status"
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                status:
+                  type: "string"
+                  description: "Novo status do item"
+                  enum: ["won", "lost", "open"]
+                  example: "won"
+              required:
+                - "status"
+            example:
+              status: "won"
+      responses:
+        "200":
+          description: "Status alterado"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KanbanItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+  /accounts/{account_id}/kanban_items/{id}/assign_agent_to_checklist_item:
+    post:
+      tags:
+        - "Checklist"
+      summary: "Atribuir agente ao item do checklist"
+      description: "Atribui um agente a um item específico do checklist"
+      operationId: "assignAgentToChecklistItem"
+      parameters:
+        - name: "account_id"
+          in: "path"
+          required: true
+          description: "ID da conta"
+          schema:
+            type: "integer"
+          example: 1
+        - name: "id"
+          in: "path"
+          required: true
+          description: "ID do item"
+          schema:
+            type: "integer"
+          example: 1
+      requestBody:
+        required: true
+        description: "Dados da atribuição"
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                checklist_item_id:
+                  type: "string"
+                  description: "ID do item do checklist"
+                  example: "uuid-123"
+                agent_id:
+                  type: "integer"
+                  description: "ID do agente"
+                  example: 1
+              required:
+                - "checklist_item_id"
+                - "agent_id"
+            example:
+              checklist_item_id: "uuid-123"
+              agent_id: 1
+      responses:
+        "200":
+          description: "Agente atribuído ao item do checklist"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KanbanItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /accounts/{account_id}/kanban_items/{id}/remove_agent_from_checklist_item:
+    post:
+      tags:
+        - "Checklist"
+      summary: "Remover agente do item do checklist"
+      description: "Remove um agente de um item específico do checklist"
+      operationId: "removeAgentFromChecklistItem"
+      parameters:
+        - name: "account_id"
+          in: "path"
+          required: true
+          description: "ID da conta"
+          schema:
+            type: "integer"
+          example: 1
+        - name: "id"
+          in: "path"
+          required: true
+          description: "ID do item"
+          schema:
+            type: "integer"
+          example: 1
+      requestBody:
+        required: true
+        description: "Dados da remoção"
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                checklist_item_id:
+                  type: "string"
+                  description: "ID do item do checklist"
+                  example: "uuid-123"
+              required:
+                - "checklist_item_id"
+            example:
+              checklist_item_id: "uuid-123"
+      responses:
+        "200":
+          description: "Agente removido do item do checklist"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KanbanItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: "http"
+      scheme: "bearer"
+      description: "Token de autenticação Bearer"
+  responses:
+    BadRequest:
+      description: "Requisição inválida"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: "Não autorizado"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Forbidden:
+      description: "Acesso negado"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: "Recurso não encontrado"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    UnprocessableEntity:
+      description: "Entidade não processável"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  schemas:
+    Funnel:
+      type: "object"
+      description: "Representa um funil de vendas"
+      properties:
+        id:
+          type: "integer"
+          description: "ID único do funil"
+          example: 1
+        name:
+          type: "string"
+          description: "Nome do funil"
+          example: "Funnel de Vendas"
+        description:
+          type: "string"
+          description: "Descrição do funil"
+          example: "Funnel principal de vendas"
+        active:
+          type: "boolean"
+          description: "Se o funil está ativo"
+          example: true
+        stages:
+          type: "object"
+          description: "Estágios do funil"
+          additionalProperties:
+            type: "object"
+          example:
+            lead: { name: "Lead", color: "#3b82f6", id: "lead_1" }
+            prospect: { name: "Prospecto", color: "#f59e0b", id: "prospect_1" }
+            customer: { name: "Cliente", color: "#10b981", id: "customer_1" }
+        settings:
+          type: "object"
+          description: "Configurações do funil"
+          additionalProperties: true
+        global_custom_attributes:
+          type: "array"
+          description: "Atributos customizados globais"
+          items:
+            type: "object"
+            properties:
+              name:
+                type: "string"
+              type:
+                type: "string"
+        account_id:
+          type: "integer"
+          description: "ID da conta"
+          example: 1
+        created_at:
+          type: "string"
+          format: "date-time"
+          description: "Data de criação"
+          example: "2024-01-15T10:00:00Z"
+        updated_at:
+          type: "string"
+          format: "date-time"
+          description: "Data de atualização"
+          example: "2024-01-15T10:00:00Z"
+      required:
+        - "id"
+        - "name"
+        - "account_id"
+    FunnelCreate:
+      type: "object"
+      description: "Dados para criar um funil"
+      properties:
+        funnel:
+          type: "object"
+          properties:
+            name:
+              type: "string"
+              description: "Nome do funil"
+              example: "Novo Funnel"
+            description:
+              type: "string"
+              description: "Descrição do funil"
+              example: "Descrição do funil"
+            active:
+              type: "boolean"
+              description: "Se o funil está ativo"
+              example: true
+            stages:
+              type: "object"
+              description: "Estágios do funil"
+              additionalProperties:
+                type: "object"
+              example:
+                lead: { name: "Lead", color: "#3b82f6", id: "lead_1" }
+                prospect:
+                  { name: "Prospecto", color: "#f59e0b", id: "prospect_1" }
+                customer:
+                  { name: "Cliente", color: "#10b981", id: "customer_1" }
+            settings:
+              type: "object"
+              description: "Configurações do funil"
+              additionalProperties: true
+            global_custom_attributes:
+              type: "array"
+              description: "Atributos customizados globais"
+              items:
+                type: "object"
+                properties:
+                  name:
+                    type: "string"
+                  type:
+                    type: "string"
+          required:
+            - "name"
+      required:
+        - "funnel"
+    FunnelUpdate:
+      type: "object"
+      description: "Dados para atualizar um funil"
+      properties:
+        funnel:
+          type: "object"
+          properties:
+            name:
+              type: "string"
+              description: "Nome do funil"
+              example: "Funnel Atualizado"
+            description:
+              type: "string"
+              description: "Descrição do funil"
+              example: "Nova descrição"
+            active:
+              type: "boolean"
+              description: "Se o funil está ativo"
+              example: true
+            stages:
+              type: "object"
+              description: "Estágios do funil"
+              additionalProperties:
+                type: "object"
+            settings:
+              type: "object"
+              description: "Configurações do funil"
+              additionalProperties: true
+            global_custom_attributes:
+              type: "array"
+              description: "Atributos customizados globais"
+              items:
+                type: "object"
+                properties:
+                  name:
+                    type: "string"
+                  type:
+                    type: "string"
+          required:
+            - "funnel"
+    KanbanItem:
+      type: "object"
+      description: "Representa um item do Kanban"
+      properties:
+        id:
+          type: "integer"
+          description: "ID único do item"
+          example: 1
+        funnel_id:
+          type: "integer"
+          description: "ID do funil"
+          example: 1
+        funnel_stage:
+          type: "string"
+          description: "Estágio atual do item"
+          example: "lead"
+        position:
+          type: "integer"
+          description: "Posição no estágio"
+          example: 1
+        conversation_display_id:
+          type: "integer"
+          description: "ID da conversa"
+          example: 123
+        timer_started_at:
+          type: "string"
+          format: "date-time"
+          description: "Início do timer"
+          example: "2024-01-15T10:00:00Z"
+        timer_duration:
+          type: "integer"
+          description: "Duração do timer em segundos"
+          example: 3600
+        stage_entered_at:
+          type: "string"
+          format: "date-time"
+          description: "Data de entrada no estágio"
+          example: "2024-01-15T10:00:00Z"
+        checklist:
+          type: "array"
+          description: "Lista de itens do checklist"
+          items:
+            type: "object"
+            properties:
+              id:
+                type: "string"
+                description: "ID único do item"
+              text:
+                type: "string"
+                description: "Texto do item"
+              completed:
+                type: "boolean"
+                description: "Se o item está completo"
+              created_at:
+                type: "string"
+                format: "date-time"
+                description: "Data de criação"
+              position:
+                type: "integer"
+                description: "Posição do item"
+              agent_id:
+                type: "integer"
+                description: "ID do agente responsável"
+        assigned_agents:
+          type: "array"
+          description: "Lista de agentes atribuídos"
+          items:
+            type: "integer"
+        custom_attributes:
+          type: "object"
+          description: "Atributos customizados"
+          additionalProperties: true
+        item_details:
+          type: "object"
+          description: "Detalhes do item"
+          properties:
+            title:
+              type: "string"
+              description: "Título do item"
+              example: "Novo Lead"
+            description:
+              type: "string"
+              description: "Descrição do item"
+              example: "Descrição do lead"
+            status:
+              type: "string"
+              description: "Status do item"
+              example: "active"
+            priority:
+              type: "string"
+              description: "Prioridade do item"
+              example: "high"
+            value:
+              type: "number"
+              description: "Valor do item"
+              example: 1000.00
+            currency:
+              type: "object"
+              description: "Informações da moeda"
+              properties:
+                symbol:
+                  type: "string"
+                code:
+                  type: "string"
+                locale:
+                  type: "string"
+            custom_attributes:
+              type: "array"
+              description: "Atributos customizados"
+              items:
+                type: "object"
+                properties:
+                  name:
+                    type: "string"
+                  value:
+                    type: "string"
+                  type:
+                    type: "string"
+            offers:
+              type: "array"
+              description: "Lista de ofertas"
+              items:
+                type: "object"
+                properties:
+                  value:
+                    type: "number"
+                  currency:
+                    type: "object"
+                    properties:
+                      symbol:
+                        type: "string"
+                      code:
+                        type: "string"
+                      locale:
+                        type: "string"
+                  description:
+                    type: "string"
+            deadline_at:
+              type: "string"
+              format: "date-time"
+              description: "Data limite"
+            scheduling_type:
+              type: "string"
+              description: "Tipo de agendamento"
+            scheduled_at:
+              type: "string"
+              format: "date-time"
+              description: "Data agendada"
+            activities:
+              type: "array"
+              description: "Lista de atividades"
+              items:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                  type:
+                    type: "string"
+                  user:
+                    type: "object"
+                    properties:
+                      id:
+                        type: "integer"
+                      name:
+                        type: "string"
+                      avatar_url:
+                        type: "string"
+                  details:
+                    type: "object"
+                    properties:
+                      user:
+                        type: "object"
+                        properties:
+                          id:
+                            type: "integer"
+                          name:
+                            type: "string"
+                          avatar_url:
+                            type: "string"
+                      new_stage:
+                        type: "string"
+                      old_stage:
+                        type: "string"
+                  created_at:
+                    type: "string"
+                    format: "date-time"
+            conversation_id:
+              type: "integer"
+              description: "ID da conversa"
+            notes:
+              type: "array"
+              description: "Lista de notas"
+              items:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                  text:
+                    type: "string"
+                  created_at:
+                    type: "string"
+                    format: "date-time"
+                  attachments:
+                    type: "array"
+                    items:
+                      type: "object"
+                      properties:
+                        id:
+                          type: "string"
+                        url:
+                          type: "string"
+                        filename:
+                          type: "string"
+                        byte_size:
+                          type: "integer"
+                        content_type:
+                          type: "string"
+                        created_at:
+                          type: "string"
+                          format: "date-time"
+                  linked_item_id:
+                    type: "integer"
+                  linked_conversation_id:
+                    type: "integer"
+                  linked_contact_id:
+                    type: "integer"
+                  author:
+                    type: "string"
+                  author_id:
+                    type: "integer"
+                  author_avatar:
+                    type: "string"
+          required:
+            - "title"
+        account_id:
+          type: "integer"
+          description: "ID da conta"
+          example: 1
+        created_at:
+          type: "string"
+          format: "date-time"
+          description: "Data de criação"
+          example: "2024-01-15T10:00:00Z"
+        updated_at:
+          type: "string"
+          format: "date-time"
+          description: "Data de atualização"
+          example: "2024-01-15T10:00:00Z"
+      required:
+        - "id"
+        - "funnel_id"
+        - "funnel_stage"
+        - "item_details"
+    KanbanItemCreate:
+      type: "object"
+      description: "Dados para criar um item do Kanban"
+      properties:
+        kanban_item:
+          type: "object"
+          properties:
+            funnel_id:
+              type: "integer"
+              description: "ID do funil"
+              example: 1
+            funnel_stage:
+              type: "string"
+              description: "Estágio inicial do item"
+              example: "lead"
+            position:
+              type: "integer"
+              description: "Posição no estágio"
+              example: 1
+            conversation_display_id:
+              type: "integer"
+              description: "ID da conversa"
+              example: 123
+            timer_started_at:
+              type: "string"
+              format: "date-time"
+              description: "Início do timer"
+              example: "2024-01-15T10:00:00Z"
+            timer_duration:
+              type: "integer"
+              description: "Duração do timer em segundos"
+              example: 3600
+            checklist:
+              type: "array"
+              description: "Lista de itens do checklist"
+              items:
+                type: "object"
+            assigned_agents:
+              type: "array"
+              description: "Lista de agentes atribuídos"
+              items:
+                type: "integer"
+            custom_attributes:
+              type: "object"
+              description: "Atributos customizados"
+              additionalProperties: true
+            item_details:
+              type: "object"
+              description: "Detalhes do item"
+              properties:
+                title:
+                  type: "string"
+                  description: "Título do item"
+                  example: "Novo Lead"
+                description:
+                  type: "string"
+                  description: "Descrição do item"
+                  example: "Descrição do lead"
+                status:
+                  type: "string"
+                  description: "Status do item"
+                  example: "active"
+                priority:
+                  type: "string"
+                  description: "Prioridade do item"
+                  example: "high"
+                value:
+                  type: "number"
+                  description: "Valor do item"
+                  example: 1000.00
+                conversation_id:
+                  type: "integer"
+                  description: "ID da conversa"
+              required:
+                - "title"
+          required:
+            - "funnel_id"
+            - "funnel_stage"
+            - "position"
+            - "item_details"
+      required:
+        - "kanban_item"
+    KanbanItemUpdate:
+      type: "object"
+      description: "Dados para atualizar um item do Kanban"
+      properties:
+        kanban_item:
+          type: "object"
+          properties:
+            funnel_id:
+              type: "integer"
+              description: "ID do funil"
+              example: 1
+            funnel_stage:
+              type: "string"
+              description: "Novo estágio do item"
+              example: "prospect"
+            position:
+              type: "integer"
+              description: "Nova posição no estágio"
+              example: 2
+            conversation_display_id:
+              type: "integer"
+              description: "ID da conversa"
+              example: 123
+            timer_started_at:
+              type: "string"
+              format: "date-time"
+              description: "Início do timer"
+              example: "2024-01-15T10:00:00Z"
+            timer_duration:
+              type: "integer"
+              description: "Duração do timer em segundos"
+              example: 3600
+            checklist:
+              type: "array"
+              description: "Lista de itens do checklist"
+              items:
+                type: "object"
+            assigned_agents:
+              type: "array"
+              description: "Lista de agentes atribuídos"
+              items:
+                type: "integer"
+            custom_attributes:
+              type: "object"
+              description: "Atributos customizados"
+              additionalProperties: true
+            item_details:
+              type: "object"
+              description: "Detalhes do item"
+              properties:
+                title:
+                  type: "string"
+                  description: "Título do item"
+                  example: "Lead Atualizado"
+                description:
+                  type: "string"
+                  description: "Descrição do item"
+                  example: "Nova descrição"
+                status:
+                  type: "string"
+                  description: "Status do item"
+                  example: "active"
+                priority:
+                  type: "string"
+                  description: "Prioridade do item"
+                  example: "medium"
+                value:
+                  type: "number"
+                  description: "Valor do item"
+                  example: 1500.00
+          required:
+            - "kanban_item"
+      required:
+        - "kanban_item"
+    KanbanItemsResponse:
+      type: "object"
+      description: "Resposta paginada de kanban items"
+      properties:
+        items:
+          type: "array"
+          description: "Lista de itens do Kanban"
+          items:
+            $ref: "#/components/schemas/KanbanItem"
+        pagination:
+          type: "object"
+          description: "Informações de paginação"
+          properties:
+            current_page:
+              type: "integer"
+              description: "Página atual"
+              example: 1
+            total_count:
+              type: "integer"
+              description: "Total de itens"
+              example: 50
+            has_more:
+              type: "boolean"
+              description: "Se há mais páginas"
+              example: true
+            items_per_page:
+              type: "integer"
+              description: "Itens por página"
+              example: 50
+          required:
+            - "current_page"
+            - "total_count"
+            - "has_more"
+            - "items_per_page"
+      required:
+        - "items"
+        - "pagination"
+    AssignedAgentsResponse:
+      type: "object"
+      description: "Resposta com agentes atribuídos"
+      properties:
+        assigned_agents:
+          type: "array"
+          description: "Lista de agentes atribuídos"
+          items:
+            type: "object"
+            properties:
+              id:
+                type: "integer"
+                description: "ID do agente"
+              name:
+                type: "string"
+                description: "Nome do agente"
+              email:
+                type: "string"
+                description: "Email do agente"
+              avatar_url:
+                type: "string"
+                description: "URL do avatar"
+              availability_status:
+                type: "string"
+                description: "Status de disponibilidade"
+        primary_agent:
+          type: "object"
+          description: "Agente principal"
+          properties:
+            id:
+              type: "integer"
+              description: "ID do agente"
+            name:
+              type: "string"
+              description: "Nome do agente"
+            email:
+              type: "string"
+              description: "Email do agente"
+            avatar_url:
+              type: "string"
+              description: "URL do avatar"
+            availability_status:
+              type: "string"
+              description: "Status de disponibilidade"
+      required:
+        - "assigned_agents"
+    Error:
+      type: "object"
+      description: "Representa um erro da API"
+      properties:
+        error:
+          type: "string"
+          description: "Mensagem de erro"
+          example: "Erro ao processar requisição"
+        status:
+          type: "string"
+          description: "Status do erro"
+          example: "bad_request"
+        details:
+          type: "object"
+          description: "Detalhes adicionais do erro"
+          additionalProperties: true
+      required:
+        - "error"
+    ReorderRequest:
+      type: "object"
+      description: "Dados para reordenar itens do Kanban"
+      properties:
+        positions:
+          type: "array"
+          description: "Lista de posições dos itens"
+          items:
+            type: "object"
+            properties:
+              id:
+                type: "integer"
+                description: "ID do item"
+                example: 1
+              position:
+                type: "integer"
+                description: "Nova posição do item"
+                example: 1
+              funnel_stage:
+                type: "string"
+                description: "Etapa do funil"
+                example: "lead"
+            required:
+              - "id"
+              - "position"
+              - "funnel_stage"
+          example:
+            - id: 1
+              position: 1
+              funnel_stage: "lead"
+            - id: 2
+              position: 2
+              funnel_stage: "lead"
+      required:
+        - "positions"
+    StageStats:
+      type: "object"
+      description: "Estatísticas por etapa do funil"
+      properties:
+        stages:
+          type: "object"
+          description: "Estatísticas por etapa"
+          additionalProperties:
+            type: "object"
+            properties:
+              count:
+                type: "integer"
+                description: "Número de itens na etapa"
+                example: 5
+              total_value:
+                type: "number"
+                description: "Valor total dos itens na etapa"
+                example: 5000.00
+          example:
+            lead:
+              count: 5
+              total_value: 5000.00
+            prospect:
+              count: 3
+              total_value: 3000.00
+            customer:
+              count: 2
+              total_value: 2000.00
+    DebugInfo:
+      type: "object"
+      description: "Informações de debug"
+      properties:
+        environment:
+          type: "string"
+          description: "Ambiente da aplicação"
+          example: "development"
+        ruby_version:
+          type: "string"
+          description: "Versão do Ruby"
+          example: "3.2.0"
+        rails_version:
+          type: "string"
+          description: "Versão do Rails"
+          example: "7.1.0"
+        kanban_items_count:
+          type: "integer"
+          description: "Número total de itens do Kanban"
+          example: 10
+        first_item_sample:
+          type: "object"
+          description: "Amostra do primeiro item"
+          additionalProperties: true
+        has_conversation_data:
+          type: "boolean"
+          description: "Se há dados de conversa"
+          example: true
+    FunnelLimitError:
+      type: "object"
+      description: "Erro de limite de funnels"
+      properties:
+        error:
+          type: "string"
+          description: "Mensagem de erro"
+          example: "Limite de funnels atingido. Atualize para a versão PRO para criar mais funnels."
+        code:
+          type: "string"
+          description: "Código do erro"
+          example: "FUNNEL_LIMIT_REACHED"
+      required:
+        - "error"
+        - "code"

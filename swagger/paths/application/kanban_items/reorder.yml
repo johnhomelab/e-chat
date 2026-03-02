@@ -1,0 +1,28 @@
+tags:
+  - Kanban Items
+summary: Reorder items
+description: Reorder kanban items within a stage
+parameters:
+  - name: data
+    in: body
+    required: true
+    schema:
+      type: object
+      properties:
+        funnel_stage:
+          type: string
+          description: Estágio dos itens
+        item_ids:
+          type: array
+          items:
+            type: number
+          description: Lista ordenada de IDs dos itens
+responses:
+  200:
+    description: Success
+  401:
+    description: Unauthorized
+  403:
+    description: Access denied
+  422:
+    description: Validation error

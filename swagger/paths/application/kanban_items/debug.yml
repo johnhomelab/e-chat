@@ -1,0 +1,38 @@
+tags:
+  - Kanban Items
+summary: Debug de itens do kanban
+description: Retorna informações de debug dos itens do kanban
+parameters:
+  - name: funnel_id
+    in: query
+    type: number
+    required: false
+    description: ID do funil para filtrar os itens
+responses:
+  200:
+    description: Success
+    schema:
+      type: object
+      properties:
+        environment:
+          type: string
+          description: Ambiente atual
+        ruby_version:
+          type: string
+          description: Versão do Ruby
+        rails_version:
+          type: string
+          description: Versão do Rails
+        kanban_items_count:
+          type: number
+          description: Quantidade total de itens
+        first_item_sample:
+          type: object
+          description: Exemplo do primeiro item encontrado
+        has_conversation_data:
+          type: boolean
+          description: Indica se há dados de conversas nos itens
+  401:
+    description: Unauthorized
+  403:
+    description: Access denied 

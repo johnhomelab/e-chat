@@ -1,0 +1,26 @@
+# logs / tmp
+log/
+tmp/
+*.log
+
+# env / secrets
+.env
+.env.*
+config/master.key
+config/credentials*.yml.enc
+
+# node
+node_modules/
+yarn-error.log
+npm-debug.log*
+.pnpm-debug.log*
+
+# builds
+public/packs*
+public/vite*
+coverage/
+
+# OS/IDE
+.DS_Store
+.idea/
+.vscode/

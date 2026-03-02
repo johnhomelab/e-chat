@@ -1,0 +1,96 @@
+Endpoints do Funnel
+==================
+
+Base URL: app.seudominio.com/api/v1/accounts/:account_id
+
+Headers Obrigatórios
+-------------------
+- Authorization: Bearer {access_token}
+- Content-Type: application/json
+
+1. Listagem de Funis
+-------------------
+GET /funnels
+- Lista todos os funis da conta
+- Retorna array de funis ordenados por nome
+
+2. Exibir Funil
+-------------
+GET /funnels/:id
+- Retorna os detalhes de um funil específico
+
+3. Criar Funil
+------------
+POST /funnels
+- Cria um novo funil
+- Payload esperado:
+  {
+    "funnel": {
+      "name": string,
+      "description": string,
+      "active": boolean,
+      "stages": {
+        "lead": {
+          "name": "Lead",
+          "color": "#E5E7EB",
+          "position": 1
+        },
+        "contact": {
+          "name": "Contato",
+          "color": "#FDE68A", 
+          "position": 2
+        }
+      },
+      "settings": {
+        "auto_assignment": boolean,
+        "notifications_enabled": boolean
+      }
+    }
+  }
+
+4. Novo Funil (Form)
+------------------
+GET /funnels/new
+- Retorna dados necessários para o formulário de criação
+
+5. Editar Funil (Form)
+--------------------
+GET /funnels/:id/edit
+- Retorna dados necessários para o formulário de edição
+
+6. Atualizar Funil
+----------------
+PATCH/PUT /funnels/:id
+- Atualiza um funil existente
+- Aceita os mesmos campos do endpoint de criação
+- Permite atualização parcial dos campos
+
+7. Excluir Funil
+--------------
+DELETE /funnels/:id
+- Remove um funil e seus itens associados
+
+Códigos de Resposta
+------------------
+- 200: Sucesso
+- 201: Criado com sucesso
+- 400: Requisição inválida
+- 401: Não autorizado
+- 403: Acesso negado
+- 404: Recurso não encontrado
+- 422: Erro de validação
+- 500: Erro interno do servidor
+
+Estrutura do Funil
+-----------------
+{
+  "id": number,
+  "account_id": number,
+  "name": string,
+  "description": string,
+  "active": boolean,
+  "stages": object,
+  "settings": object,
+  "created_at": datetime,
+  "updated_at": datetime
+} 

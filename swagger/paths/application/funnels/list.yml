@@ -1,0 +1,22 @@
+tags:
+  - Funnels
+summary: List all funnels
+description: Get a list of all funnels in the account
+parameters:
+  - name: status
+    in: query
+    type: string
+    enum: [active, archived]
+    description: Filtrar por status
+    required: false
+responses:
+  200:
+    description: Success
+    schema:
+      type: array
+      items:
+        $ref: '#/definitions/funnel'
+  401:
+    description: Unauthorized
+  403:
+    description: Access denied

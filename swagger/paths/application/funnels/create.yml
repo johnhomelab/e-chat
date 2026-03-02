@@ -1,0 +1,33 @@
+tags:
+  - Funnels
+summary: Create a funnel
+description: Create a new funnel in the account
+parameters:
+  - name: data
+    in: body
+    required: true
+    schema:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Nome do funil
+        description:
+          type: string
+          description: Descrição do funil
+        status:
+          type: string
+          enum: [active, archived]
+          description: Status do funil
+        position:
+          type: number
+          description: Posição do funil na lista
+responses:
+  200:
+    description: Success
+    schema:
+      $ref: '#/definitions/funnel'
+  401:
+    description: Unauthorized
+  403:
+    description: Access denied

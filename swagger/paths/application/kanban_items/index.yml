@@ -1,0 +1,21 @@
+tags:
+  - Kanban Items
+summary: Listar itens do kanban
+description: Lista todos os itens do kanban para um determinado funil
+parameters:
+  - name: funnel_id
+    in: query
+    type: number
+    required: false
+    description: ID do funil para filtrar os itens
+responses:
+  200:
+    description: Success
+    schema:
+      type: array
+      items:
+        $ref: '#/definitions/kanban_item'
+  401:
+    description: Unauthorized
+  403:
+    description: Access denied 

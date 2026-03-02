@@ -24,3 +24,7 @@ coverage/
 .DS_Store
 .idea/
 .vscode/
+
+# --- secrets / instance configs (DO NOT COMMIT) ---
+stacklab/service-account-kanban-firebase.json
+config/installation_config.yml

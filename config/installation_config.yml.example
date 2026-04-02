@@ -1,0 +1,3 @@
+# Example installation config (DO NOT put real secrets here)
+# Copy to config/installation_config.yml and fill for your environment.
+# Keep this file committed; keep the real one untracked.
